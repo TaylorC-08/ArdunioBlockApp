@@ -1,5 +1,6 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu } from 'electron';
 import path from 'path';
+import { registerFileHandlers } from './fileHandlers';
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -15,6 +16,21 @@ function createWindow(): void {
     },
     title: 'Arduino Block App',
   });
+
+  registerFileHandlers(win);
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    {
+      label: 'File',
+      submenu: [
+        { label: 'New',        accelerator: 'CmdOrCtrl+N',       click: () => win.webContents.send('menu-cmd', 'file-new') },
+        { label: 'Open...',    accelerator: 'CmdOrCtrl+O',       click: () => win.webContents.send('menu-cmd', 'file-open') },
+        { type: 'separator' },
+        { label: 'Save',       accelerator: 'CmdOrCtrl+S',       click: () => win.webContents.send('menu-cmd', 'file-save') },
+        { label: 'Save As...', accelerator: 'CmdOrCtrl+Shift+S', click: () => win.webContents.send('menu-cmd', 'file-save-as') },
+      ],
+    },
+  ]));
 
   win.loadFile(path.join(__dirname, '../renderer/index.html'));
 

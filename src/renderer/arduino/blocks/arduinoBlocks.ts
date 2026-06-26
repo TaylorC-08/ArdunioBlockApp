@@ -5,6 +5,26 @@ import { arduinoGenerator, ArduinoGenerator } from '../arduinoGenerator';
 
 Blockly.defineBlocksWithJsonArray([
   {
+    type: 'arduino_setup',
+    message0: 'void setup() %1 %2',
+    args0: [
+      { type: 'input_dummy' },
+      { type: 'input_statement', name: 'DO' },
+    ],
+    colour: 30,
+    tooltip: 'Runs once when the board powers on or resets',
+  },
+  {
+    type: 'arduino_loop',
+    message0: 'void loop() %1 %2',
+    args0: [
+      { type: 'input_dummy' },
+      { type: 'input_statement', name: 'DO' },
+    ],
+    colour: 30,
+    tooltip: 'Runs repeatedly, forever, after setup() finishes',
+  },
+  {
     type: 'arduino_pin_mode',
     message0: 'set pin %1 mode %2',
     args0: [
@@ -148,6 +168,20 @@ Blockly.defineBlocksWithJsonArray([
 ]);
 
 // ---- Code generators ----
+
+arduinoGenerator.forBlock['arduino_setup'] = function(block, generator) {
+  const inner = block.getInputTargetBlock('DO');
+  const code = inner ? (generator.blockToCode(inner) as string) : '';
+  (generator as ArduinoGenerator).setupCode_ += code;
+  return '';
+};
+
+arduinoGenerator.forBlock['arduino_loop'] = function(block, generator) {
+  const inner = block.getInputTargetBlock('DO');
+  const code = inner ? (generator.blockToCode(inner) as string) : '';
+  (generator as ArduinoGenerator).loopCode_ += code;
+  return '';
+};
 
 arduinoGenerator.forBlock['arduino_pin_mode'] = function(block) {
   const pin  = block.getFieldValue('PIN');

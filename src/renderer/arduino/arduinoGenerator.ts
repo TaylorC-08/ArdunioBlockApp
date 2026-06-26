@@ -21,6 +21,10 @@ export class ArduinoGenerator extends Blockly.CodeGenerator {
   // Variables used during generation, tracked for global declarations
   usedVariables_: Set<string> = new Set();
 
+  // Code captured from explicit setup()/loop() container blocks
+  setupCode_ = '';
+  loopCode_ = '';
+
   constructor() {
     super('Arduino');
     this.RESERVED_WORDS_ =
@@ -36,6 +40,8 @@ export class ArduinoGenerator extends Blockly.CodeGenerator {
   init(workspace: Blockly.Workspace): void {
     this.definitions_ = Object.create(null) as {[key: string]: string};
     this.usedVariables_ = new Set();
+    this.setupCode_ = '';
+    this.loopCode_ = '';
 
     if (!this.nameDB_) {
       this.nameDB_ = new Blockly.Names(this.RESERVED_WORDS_);
@@ -68,19 +74,22 @@ export class ArduinoGenerator extends Blockly.CodeGenerator {
     if (globalDefs.length) parts.push(globalDefs.join('\n'));
     if (parts.length)     parts.push(''); // blank line before functions
 
+    // setup(): auto-injected statements (e.g. Serial.begin) + user setup blocks
+    const setupBody = [...setupStatements];
+    if (this.setupCode_.trim()) setupBody.push(...this.setupCode_.trimEnd().split('\n'));
     parts.push('void setup() {');
-    for (const stmt of setupStatements) parts.push('  ' + stmt);
+    for (const line of setupBody) parts.push(line ? '  ' + line : '');
     parts.push('}');
     parts.push('');
-    parts.push('void loop() {');
 
-    const trimmed = code.trimEnd();
-    if (trimmed) {
-      for (const line of trimmed.split('\n')) {
+    // loop(): user loop blocks + any loose top-level blocks (backward compat)
+    const loopBody = (this.loopCode_ + code).trimEnd();
+    parts.push('void loop() {');
+    if (loopBody) {
+      for (const line of loopBody.split('\n')) {
         parts.push(line ? '  ' + line : '');
       }
     }
-
     parts.push('}');
     return parts.join('\n') + '\n';
   }

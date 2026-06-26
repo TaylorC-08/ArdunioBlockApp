@@ -1,9 +1,24 @@
 import * as Blockly from 'blockly';
 import { arduinoGenerator } from './arduino/index';
+import {
+  getCurrentFilePath, isDirty, setFilePath, markDirty,
+  serializeWorkspace, loadWorkspace, parseFileContent,
+} from './fileManager';
+import { initMonaco, getContent, setContent, onUserEdit, layout } from './monacoEditor';
 
 const toolbox: Blockly.utils.toolbox.ToolboxDefinition = {
   kind: 'categoryToolbox',
   contents: [
+    // ---- Program structure ----
+    {
+      kind: 'category',
+      name: 'Structure',
+      colour: '#C49A3F',
+      contents: [
+        { kind: 'block', type: 'arduino_setup' },
+        { kind: 'block', type: 'arduino_loop' },
+      ],
+    },
     // ---- Arduino-specific ----
     {
       kind: 'category',
@@ -90,10 +105,12 @@ const toolbox: Blockly.utils.toolbox.ToolboxDefinition = {
 };
 
 window.addEventListener('load', () => {
-  const blocklyDiv  = document.getElementById('blockly-div')  as HTMLElement;
-  const codeOutput  = document.getElementById('code-output')  as HTMLPreElement;
-  const btnGenerate = document.getElementById('btn-generate') as HTMLButtonElement;
-  const btnClear    = document.getElementById('btn-clear')    as HTMLButtonElement;
+  const blocklyDiv     = document.getElementById('blockly-div')      as HTMLElement;
+  const monacoContainer = document.getElementById('monaco-container') as HTMLElement;
+  const btnSync        = document.getElementById('btn-sync')         as HTMLButtonElement;
+  const btnClear       = document.getElementById('btn-clear')        as HTMLButtonElement;
+
+  initMonaco(monacoContainer);
 
   const workspace = Blockly.inject(blocklyDiv, {
     toolbox,
@@ -106,10 +123,14 @@ window.addEventListener('load', () => {
   Blockly.svgResize(workspace);
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let isLoadingFromFile = false;
+  // Once the user types in the editor, blocks stop auto-overwriting it.
+  let manualEdit = false;
 
-  function generateCode(): void {
+  function generateCode(): string {
     const code = arduinoGenerator.workspaceToCode(workspace);
-    codeOutput.textContent = code || '// No blocks in workspace';
+    if (!manualEdit) setContent(code || '// No blocks in workspace');
+    return code;
   }
 
   function debouncedGenerateCode(): void {
@@ -117,12 +138,112 @@ window.addEventListener('load', () => {
     debounceTimer = setTimeout(generateCode, 150);
   }
 
-  workspace.addChangeListener(debouncedGenerateCode);
-  btnGenerate.addEventListener('click', generateCode);
-  btnClear.addEventListener('click', () => {
-    workspace.clear();
-    codeOutput.textContent = '// Click "Generate Code" to see output';
+  workspace.addChangeListener((e) => {
+    debouncedGenerateCode();
+    if (!isLoadingFromFile && !e.isUiEvent) markDirty(true);
   });
 
-  window.addEventListener('resize', () => Blockly.svgResize(workspace));
+  onUserEdit(() => {
+    manualEdit = true;
+    markDirty(true);
+  });
+
+  function syncFromBlocks(): void {
+    const code = arduinoGenerator.workspaceToCode(workspace) || '// No blocks in workspace';
+    if (manualEdit && getContent() !== code &&
+        !confirm('Overwrite manual edits with code generated from the blocks?')) {
+      return;
+    }
+    setContent(code);
+    manualEdit = false;
+    markDirty(true);
+  }
+
+  btnSync.addEventListener('click', syncFromBlocks);
+  btnClear.addEventListener('click', () => {
+    workspace.clear();
+    manualEdit = false;
+    generateCode();
+    markDirty(true);
+  });
+
+  window.addEventListener('resize', () => { Blockly.svgResize(workspace); layout(); });
+
+  // ---- File operations ----
+
+  async function checkUnsaved(): Promise<boolean> {
+    if (!isDirty()) return true;
+    const response = await window.electronAPI.dialogUnsaved();
+    if (response === 2) return false;           // Cancel
+    if (response === 0) return await doSave();  // Save then proceed
+    return true;                                // Don't Save
+  }
+
+  // XML embedded only when blocks exist; external/blockless files save as plain code.
+  async function save(saveAs: boolean): Promise<boolean> {
+    const hasBlocks = workspace.getTopBlocks(false).length > 0;
+    const xml  = hasBlocks ? serializeWorkspace(workspace) : '';
+    const code = getContent();
+    const savedPath = saveAs
+      ? await window.electronAPI.fileSaveAs(xml, code)
+      : await window.electronAPI.fileSave(xml, code, getCurrentFilePath());
+    if (!savedPath) return false;
+    setFilePath(savedPath);
+    markDirty(false);
+    return true;
+  }
+
+  const doSave   = () => save(false);
+  const doSaveAs = () => save(true);
+
+  async function fileNew(): Promise<void> {
+    if (!await checkUnsaved()) return;
+    isLoadingFromFile = true;
+    workspace.clear();
+    isLoadingFromFile = false;
+    manualEdit = false;
+    setFilePath(null);
+    markDirty(false);
+    generateCode();
+  }
+
+  async function fileOpen(): Promise<void> {
+    if (!await checkUnsaved()) return;
+    const result = await window.electronAPI.fileOpen();
+    if (!result) return;
+    const { xml, code } = parseFileContent(result.content);
+
+    if (xml === null) {
+      // External file — no blocks to restore; show its code for editing.
+      isLoadingFromFile = true;
+      workspace.clear();
+      isLoadingFromFile = false;
+      manualEdit = true;
+      setContent(code);
+      setFilePath(result.filePath);
+      markDirty(false);
+      return;
+    }
+
+    try {
+      isLoadingFromFile = true;
+      loadWorkspace(workspace, xml);
+    } catch (err) {
+      alert(`Failed to load workspace: ${err}`);
+      return;
+    } finally {
+      isLoadingFromFile = false;
+    }
+    manualEdit = false;
+    setFilePath(result.filePath);
+    markDirty(false);
+    generateCode();
+  }
+
+  window.electronAPI.onMenuCmd(async (cmd) => {
+    if      (cmd === 'file-new')     await fileNew();
+    else if (cmd === 'file-open')    await fileOpen();
+    else if (cmd === 'file-save')    await doSave();
+    else if (cmd === 'file-save-as') await doSaveAs();
+  });
 });

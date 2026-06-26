@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';" />
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; font-src 'self';" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Arduino Block App</title>
+  <link rel="stylesheet" href="renderer.css" />
   <style>
     * {
       margin: 0;
@@ -81,26 +82,50 @@
       flex-shrink: 0;
     }
 
-    #output-panel h2 {
+    #output-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-bottom: 1px solid #3e3e3e;
+    }
+
+    #output-header h2 {
       font-size: 12px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: #9d9d9d;
-      padding: 10px 12px;
-      border-bottom: 1px solid #3e3e3e;
+      margin-right: auto;
     }
 
-    #code-output {
-      flex: 1;
-      padding: 12px;
-      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    #btn-sync {
+      padding: 4px 10px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
       font-size: 12px;
-      line-height: 1.6;
-      color: #ce9178;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      word-break: break-word;
+      font-weight: 500;
+      background: #3e3e3e;
+      color: #d4d4d4;
+      transition: background 0.15s;
+    }
+    #btn-sync:hover { background: #4e4e4e; }
+
+    #monaco-container {
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* Toolbox — dark theme so category labels are readable */
+    .blocklyToolboxDiv {
+      background: #252526 !important;
+    }
+    .blocklyTreeLabel {
+      color: #e8e8e8 !important;
+    }
+    .blocklyTreeRow:hover {
+      background: #333334 !important;
     }
   </style>
 </head>
@@ -114,8 +139,11 @@
   <div id="workspace-container">
     <div id="blockly-div"></div>
     <div id="output-panel">
-      <h2>Generated Code</h2>
-      <pre id="code-output">// Click "Generate Code" to see output</pre>
+      <div id="output-header">
+        <h2>Generated Code</h2>
+        <button id="btn-sync">Sync from Blocks</button>
+      </div>
+      <div id="monaco-container"></div>
     </div>
   </div>
 

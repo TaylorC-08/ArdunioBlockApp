@@ -5,9 +5,10 @@
   "main": "dist/main/main.js",
   "scripts": {
     "build:main": "tsc",
-    "build:renderer": "esbuild src/renderer/renderer.ts --bundle --outfile=dist/renderer/renderer.js --platform=browser --sourcemap",
+    "build:renderer": "esbuild src/renderer/renderer.ts --bundle --outfile=dist/renderer/renderer.js --platform=browser --sourcemap --loader:.ttf=file",
+    "build:worker": "esbuild node_modules/monaco-editor/esm/vs/editor/editor.worker.js --bundle --outfile=dist/renderer/editor.worker.js --platform=browser",
     "build:assets": "node scripts/copy-assets.js",
-    "build": "npm run build:main && npm run build:renderer && npm run build:assets",
+    "build": "npm run build:main && npm run build:renderer && npm run build:worker && npm run build:assets",
     "start": "npm run build && electron .",
     "dev": "concurrently \"tsc --watch\" \"nodemon --watch dist/main/main.js --exec electron .\"",
     "clean": "rimraf dist"
@@ -29,7 +30,8 @@
   },
   "dependencies": {
     "blockly": "^11.0.0",
-    "electron": "^31.0.0"
+    "electron": "^31.0.0",
+    "monaco-editor": "^0.55.1"
   },
   "allowScripts": {
     "electron@31.7.7": true,
