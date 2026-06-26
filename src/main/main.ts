@@ -9,6 +9,7 @@ function createWindow(): void {
     minHeight: 600,
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.js'),
+      sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
     },
@@ -17,7 +18,7 @@ function createWindow(): void {
 
   win.loadFile(path.join(__dirname, '../renderer/index.html'));
 
-  if (process.env.NODE_ENV === 'development') {
+  if (!app.isPackaged) {
     win.webContents.openDevTools();
   }
 }
