@@ -9,10 +9,11 @@ const btnClear = document.getElementById('btn-clear') as HTMLButtonElement;
 
 const workspace = Blockly.inject(blocklyDiv, {
   toolbox: toolboxElement,
+  media: 'media/',
   grid: {
     spacing: 20,
     length: 3,
-    colour: '#2e2e2e',
+    colour: '#3a3a3a',
     snap: true,
   },
   zoom: {
@@ -24,23 +25,6 @@ const workspace = Blockly.inject(blocklyDiv, {
     scaleSpeed: 1.2,
   },
   trashcan: true,
-  theme: Blockly.Theme.defineTheme('dark', {
-    name: 'dark',
-    base: Blockly.Themes.Classic,
-    componentStyles: {
-      workspaceBackgroundColour: '#1e1e1e',
-      toolboxBackgroundColour: '#2d2d2d',
-      toolboxForegroundColour: '#d4d4d4',
-      flyoutBackgroundColour: '#252526',
-      flyoutForegroundColour: '#d4d4d4',
-      flyoutOpacity: 0.9,
-      scrollbarColour: '#4e4e4e',
-      insertionMarkerColour: '#fff',
-      insertionMarkerOpacity: 0.3,
-      scrollbarOpacity: 0.4,
-      cursorColour: '#d0d0ff',
-    },
-  }),
 });
 
 function generateCode(): void {

@@ -4,8 +4,10 @@
   "description": "A visual block-based programming tool for Arduino using Blockly",
   "main": "dist/main/main.js",
   "scripts": {
-    "build": "tsc",
-    "build:watch": "tsc --watch",
+    "build:main": "tsc",
+    "build:renderer": "esbuild src/renderer/renderer.ts --bundle --outfile=dist/renderer/renderer.js --platform=browser --sourcemap",
+    "build:assets": "node scripts/copy-assets.js",
+    "build": "npm run build:main && npm run build:renderer && npm run build:assets",
     "start": "npm run build && electron .",
     "dev": "concurrently \"tsc --watch\" \"nodemon --watch dist/main/main.js --exec electron .\"",
     "clean": "rimraf dist"
@@ -20,6 +22,7 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "concurrently": "^8.0.0",
+    "esbuild": "^0.21.0",
     "nodemon": "^3.0.0",
     "rimraf": "^5.0.0",
     "typescript": "^5.4.0"
@@ -29,6 +32,7 @@
     "electron": "^31.0.0"
   },
   "allowScripts": {
-    "electron@31.7.7": true
+    "electron@31.7.7": true,
+    "esbuild@0.21.5": true
   }
 }

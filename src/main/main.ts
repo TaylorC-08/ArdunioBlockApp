@@ -15,7 +15,7 @@ function createWindow(): void {
     title: 'Arduino Block App',
   });
 
-  win.loadFile(path.join(__dirname, '../../src/renderer/index.html'));
+  win.loadFile(path.join(__dirname, '../renderer/index.html'));
 
   if (process.env.NODE_ENV === 'development') {
     win.webContents.openDevTools();
