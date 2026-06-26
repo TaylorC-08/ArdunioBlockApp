@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arduino Block App</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #1e1e1e;
+      color: #d4d4d4;
+    }
+
+    #toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #2d2d2d;
+      border-bottom: 1px solid #3e3e3e;
+      flex-shrink: 0;
+    }
+
+    #toolbar h1 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #e8e8e8;
+      margin-right: auto;
+    }
+
+    #toolbar button {
+      padding: 6px 14px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background 0.15s;
+    }
+
+    #btn-generate {
+      background: #0e7ac4;
+      color: #fff;
+    }
+    #btn-generate:hover { background: #1089d4; }
+
+    #btn-clear {
+      background: #3e3e3e;
+      color: #d4d4d4;
+    }
+    #btn-clear:hover { background: #4e4e4e; }
+
+    #workspace-container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    #blockly-div {
+      flex: 1;
+      height: 100%;
+    }
+
+    #output-panel {
+      width: 320px;
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid #3e3e3e;
+      background: #252526;
+      flex-shrink: 0;
+    }
+
+    #output-panel h2 {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #9d9d9d;
+      padding: 10px 12px;
+      border-bottom: 1px solid #3e3e3e;
+    }
+
+    #code-output {
+      flex: 1;
+      padding: 12px;
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #ce9178;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <h1>Arduino Block App</h1>
+    <button id="btn-clear">Clear</button>
+    <button id="btn-generate">Generate Code</button>
+  </div>
+
+  <div id="workspace-container">
+    <div id="blockly-div"></div>
+    <div id="output-panel">
+      <h2>Generated Code</h2>
+      <pre id="code-output">// Click "Generate Code" to see output</pre>
+    </div>
+  </div>
+
+  <xml id="toolbox" style="display:none">
+    <category name="Logic" colour="#5C81A6">
+      <block type="controls_if"></block>
+      <block type="logic_compare"></block>
+      <block type="logic_operation"></block>
+      <block type="logic_negate"></block>
+      <block type="logic_boolean"></block>
+    </category>
+    <category name="Loops" colour="#5CA65C">
+      <block type="controls_repeat_ext"></block>
+      <block type="controls_whileUntil"></block>
+      <block type="controls_for"></block>
+    </category>
+    <category name="Math" colour="#5C68A6">
+      <block type="math_number"></block>
+      <block type="math_arithmetic"></block>
+      <block type="math_single"></block>
+    </category>
+    <category name="Text" colour="#5CA68D">
+      <block type="text"></block>
+      <block type="text_print"></block>
+      <block type="text_join"></block>
+    </category>
+    <category name="Variables" colour="#A65C81" custom="VARIABLE"></category>
+    <category name="Functions" colour="#9A5CA6" custom="PROCEDURE"></category>
+  </xml>
+
+  <script src="../renderer/renderer.js"></script>
+</body>
+</html>
