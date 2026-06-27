@@ -25,6 +25,17 @@ Blockly.defineBlocksWithJsonArray([
     tooltip: 'Runs repeatedly, forever, after setup() finishes',
   },
   {
+    type: 'arduino_include',
+    message0: '#include %1',
+    args0: [
+      { type: 'field_input', name: 'LIB', text: 'Servo.h' },
+    ],
+    previousStatement: null,
+    nextStatement: null,
+    colour: 290,
+    tooltip: 'Include a library header, e.g. Servo.h. Emitted at the top of the sketch.',
+  },
+  {
     type: 'arduino_pin_mode',
     message0: 'set pin %1 mode %2',
     args0: [
@@ -168,6 +179,16 @@ Blockly.defineBlocksWithJsonArray([
 ]);
 
 // ---- Code generators ----
+
+arduinoGenerator.forBlock['arduino_include'] = function(block, generator) {
+  const lib = block.getFieldValue('LIB').trim();
+  if (lib) {
+    // Bracket form unless the user already wrote <...> or "..." themselves.
+    const ref = /^[<"].*[>"]$/.test(lib) ? lib : `<${lib}>`;
+    generator.definitions_[`include_${lib}`] = `#include ${ref}`;
+  }
+  return '';
+};
 
 arduinoGenerator.forBlock['arduino_setup'] = function(block, generator) {
   const inner = block.getInputTargetBlock('DO');

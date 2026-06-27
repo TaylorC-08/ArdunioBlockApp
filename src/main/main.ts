@@ -1,7 +1,10 @@
-import { app, BrowserWindow, ipcMain, Menu } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, dialog } from 'electron';
 import path from 'path';
 import { registerFileHandlers } from './fileHandlers';
 import { registerVerifyHandler } from './verifyHandler';
+import { registerBoardHandlers } from './boardHandler';
+import { registerRpiHandler } from './rpiDeployHandler';
+import { registerLibraryHandler } from './libraryHandler';
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -35,6 +38,26 @@ function createWindow(): void {
       label: 'Sketch',
       submenu: [
         { label: 'Verify', accelerator: 'CmdOrCtrl+R', click: () => win.webContents.send('menu-cmd', 'verify') },
+        { label: 'Upload', accelerator: 'CmdOrCtrl+U', click: () => win.webContents.send('menu-cmd', 'upload') },
+        { type: 'separator' },
+        { label: 'Install Library…', click: () => win.webContents.send('menu-cmd', 'install-library') },
+        { label: 'Blocks from Code', click: () => win.webContents.send('menu-cmd', 'import-blocks') },
+      ],
+    },
+    {
+      label: 'Help',
+      submenu: [
+        { label: 'Getting Started', accelerator: 'F1', click: () => win.webContents.send('menu-cmd', 'show-tutorial') },
+        { type: 'separator' },
+        {
+          label: 'About',
+          click: () => dialog.showMessageBox(win, {
+            type: 'info',
+            title: 'About Arduino Block App',
+            message: 'Arduino Block App',
+            detail: `Version ${app.getVersion()}\n\nVisual block-based Arduino programming with live C++ generation, compile/verify, and board upload.`,
+          }),
+        },
       ],
     },
   ]));
@@ -48,6 +71,9 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   registerVerifyHandler();
+  registerBoardHandlers();
+  registerRpiHandler();
+  registerLibraryHandler();
   createWindow();
 
   app.on('activate', () => {

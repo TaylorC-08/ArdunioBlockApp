@@ -46,6 +46,11 @@ export function layout(): void {
   editor?.layout();
 }
 
+export function setLanguage(lang: string): void {
+  const model = editor?.getModel();
+  if (model) monaco.editor.setModelLanguage(model, lang);
+}
+
 interface Diag { line: number; column: number; severity: 'error' | 'warning'; message: string; }
 
 // Underline compiler errors/warnings in the editor gutter and text.

@@ -3,8 +3,8 @@ import { execFile } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { resolveCli, DEFAULT_FQBN } from './arduinoCli';
 
-const FQBN = 'arduino:avr:uno';
 const SKETCH_NAME = 'verify_sketch';
 
 export interface Diagnostic {
@@ -18,18 +18,6 @@ export interface VerifyResult {
   success: boolean;
   diagnostics: Diagnostic[];
   rawOutput: string;
-}
-
-// arduino-cli is installed by winget but may not be on the spawned process's PATH.
-function resolveCli(): string {
-  const candidates = [
-    'C:\\Program Files\\Arduino CLI\\arduino-cli.exe',
-    path.join(process.env.LOCALAPPDATA || '', 'Microsoft', 'WinGet', 'Links', 'arduino-cli.exe'),
-  ];
-  for (const c of candidates) {
-    if (c && fs.existsSync(c)) return c;
-  }
-  return 'arduino-cli'; // fall back to PATH
 }
 
 function parseDiagnostics(compilerErr: string): Diagnostic[] {
@@ -61,7 +49,7 @@ function cleanOutput(text: string, sketchDir: string): string {
 }
 
 export function registerVerifyHandler(): void {
-  ipcMain.handle('verify-sketch', (_e, code: string): Promise<VerifyResult> => {
+  ipcMain.handle('verify-sketch', (_e, code: string, fqbn?: string): Promise<VerifyResult> => {
     const cli = resolveCli();
     const sketchDir = path.join(os.tmpdir(), 'arduino-block-app', SKETCH_NAME);
     fs.mkdirSync(sketchDir, { recursive: true });
@@ -70,7 +58,7 @@ export function registerVerifyHandler(): void {
     return new Promise((resolve) => {
       execFile(
         cli,
-        ['compile', '--fqbn', FQBN, '--format', 'json', sketchDir],
+        ['compile', '--fqbn', fqbn || DEFAULT_FQBN, '--format', 'json', sketchDir],
         { maxBuffer: 20 * 1024 * 1024 },
         (error, stdout, stderr) => {
           let compilerErr = '';

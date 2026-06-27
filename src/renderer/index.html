@@ -69,13 +69,66 @@
     #btn-verify:hover { background: #36a366; }
     #btn-verify:disabled { background: #3e3e3e; color: #7d7d7d; cursor: default; }
 
+    #btn-upload {
+      background: #0e7ac4;
+      color: #fff;
+    }
+    #btn-upload:hover { background: #1089d4; }
+    #btn-upload:disabled { background: #3e3e3e; color: #7d7d7d; cursor: default; }
+
+    #board-select {
+      background: #3e3e3e;
+      color: #d4d4d4;
+      border: 1px solid #4e4e4e;
+      border-radius: 4px;
+      padding: 5px 8px;
+      font-size: 12px;
+      max-width: 240px;
+    }
+
+    #btn-refresh-boards {
+      background: #3e3e3e;
+      color: #d4d4d4;
+    }
+    #btn-refresh-boards:hover { background: #4e4e4e; }
+
+    .hidden { display: none !important; }
+
+    #tab-bar {
+      display: flex;
+      gap: 2px;
+      padding: 0 8px;
+      background: #2d2d2d;
+      border-bottom: 1px solid #3e3e3e;
+      flex-shrink: 0;
+    }
+    .tab {
+      padding: 7px 16px;
+      border: none;
+      background: none;
+      color: #9d9d9d;
+      font-size: 13px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .tab:hover { color: #d4d4d4; }
+    .tab.active {
+      color: #e8e8e8;
+      border-bottom-color: #0e7ac4;
+    }
+
+    #rpi-actions button { background: #3e3e3e; color: #d4d4d4; }
+    #rpi-actions button:hover { background: #4e4e4e; }
+    #btn-rpi-run { background: #a6328c !important; color: #fff; }
+    #btn-rpi-run:hover { background: #bb3b9e !important; }
+
     #workspace-container {
       display: flex;
       flex: 1;
       overflow: hidden;
     }
 
-    #blockly-div {
+    #blockly-div, #blockly-div-rpi {
       flex: 1;
       height: 100%;
       min-width: 0;
@@ -199,17 +252,180 @@
       word-break: break-word;
       color: #d4d4d4;
     }
+
+    /* Getting Started overlay */
+    #help-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    #help-overlay.visible { display: flex; }
+
+    #help-panel {
+      width: min(680px, 90vw);
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      background: #252526;
+      border: 1px solid #3e3e3e;
+      border-radius: 8px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    #help-header {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid #3e3e3e;
+    }
+    #help-header h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #e8e8e8;
+      margin-right: auto;
+    }
+    #btn-help-close {
+      background: none;
+      border: none;
+      color: #9d9d9d;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0 4px;
+    }
+    #btn-help-close:hover { color: #e8e8e8; }
+
+    #help-body {
+      overflow-y: auto;
+      padding: 16px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    #help-body h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #4ec9b0;
+      margin: 16px 0 6px;
+    }
+    #help-body h3:first-child { margin-top: 0; }
+    #help-body p { margin-bottom: 8px; color: #c8c8c8; }
+    #help-body ul { margin: 0 0 8px 20px; color: #c8c8c8; }
+    #help-body li { margin-bottom: 3px; }
+    #help-body strong { color: #e8e8e8; }
+    #help-body code {
+      background: #1e1e1e;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      font-size: 12px;
+      color: #ce9178;
+    }
+
+    /* Form overlays — Raspberry Pi connection & library install (reuse help-overlay layout) */
+    #rpi-overlay, #lib-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    #rpi-overlay.visible, #lib-overlay.visible { display: flex; }
+
+    #rpi-panel, #lib-panel {
+      width: min(380px, 90vw);
+      background: #252526;
+      border: 1px solid #3e3e3e;
+      border-radius: 8px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    }
+    #rpi-header, #lib-header {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid #3e3e3e;
+    }
+    #rpi-header h2, #lib-header h2 { font-size: 15px; font-weight: 600; color: #e8e8e8; margin-right: auto; }
+    #btn-rpi-close, #btn-lib-close {
+      background: none; border: none; color: #9d9d9d;
+      font-size: 22px; line-height: 1; cursor: pointer; padding: 0 4px;
+    }
+    #btn-rpi-close:hover, #btn-lib-close:hover { color: #e8e8e8; }
+
+    #rpi-form, #lib-form { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    #rpi-form label, #lib-form label {
+      display: flex; flex-direction: column; gap: 4px;
+      font-size: 12px; color: #9d9d9d;
+    }
+    #rpi-form input, #lib-form input {
+      background: #1e1e1e;
+      border: 1px solid #3e3e3e;
+      border-radius: 4px;
+      padding: 7px 9px;
+      color: #d4d4d4;
+      font-size: 13px;
+    }
+    #rpi-form input:focus, #lib-form input:focus { outline: none; border-color: #0e7ac4; }
+    #btn-rpi-save, #btn-lib-install {
+      margin-top: 4px;
+      padding: 8px;
+      border: none;
+      border-radius: 4px;
+      background: #0e7ac4;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    #btn-rpi-save:hover, #btn-lib-install:hover { background: #1089d4; }
+
+    #lib-buttons { display: flex; gap: 8px; }
+    #lib-buttons button { flex: 1; margin-top: 0; }
+    #btn-lib-search {
+      padding: 8px; border: none; border-radius: 4px;
+      background: #3e3e3e; color: #d4d4d4; font-size: 13px; font-weight: 500; cursor: pointer;
+    }
+    #btn-lib-search:hover { background: #4e4e4e; }
+
+    #lib-results { display: flex; flex-direction: column; gap: 4px; max-height: 220px; overflow-y: auto; }
+    #lib-results button {
+      text-align: left;
+      background: #1e1e1e; border: 1px solid #3e3e3e; border-radius: 4px;
+      padding: 7px 9px; color: #d4d4d4; font-size: 12px; cursor: pointer;
+    }
+    #lib-results button:hover { background: #2d2d2d; border-color: #0e7ac4; }
+    #lib-results .lib-empty { color: #9d9d9d; font-size: 12px; padding: 4px 2px; }
   </style>
 </head>
 <body>
   <div id="toolbar">
     <h1>Arduino Block App</h1>
+    <span id="arduino-actions">
+      <select id="board-select" title="Connected boards"></select>
+      <button id="btn-refresh-boards" title="Rescan for connected boards">⟳</button>
+      <button id="btn-verify">✓ Verify</button>
+      <button id="btn-upload">→ Upload</button>
+    </span>
+    <span id="rpi-actions" class="hidden">
+      <button id="btn-rpi-settings">⚙ Pi Settings</button>
+      <button id="btn-rpi-run">▶ Run on Pi</button>
+    </span>
     <button id="btn-clear">Clear</button>
-    <button id="btn-verify">✓ Verify</button>
+  </div>
+
+  <div id="tab-bar">
+    <button class="tab active" data-tab="arduino">Arduino</button>
+    <button class="tab" data-tab="rpi">Raspberry Pi</button>
   </div>
 
   <div id="workspace-container">
     <div id="blockly-div"></div>
+    <div id="blockly-div-rpi" class="hidden"></div>
     <div id="splitter"></div>
     <div id="output-panel">
       <div id="output-header">
@@ -227,6 +443,71 @@
       <button id="btn-console-close" title="Close">×</button>
     </div>
     <pre id="console-output"></pre>
+  </div>
+
+  <div id="help-overlay">
+    <div id="help-panel">
+      <div id="help-header">
+        <h2>Getting Started</h2>
+        <button id="btn-help-close" title="Close">×</button>
+      </div>
+      <div id="help-body">
+        <h3>Building a program</h3>
+        <p>Drag blocks from the toolbox on the left onto the workspace. Put your logic inside the <strong>void setup()</strong> block (runs once) and the <strong>void loop()</strong> block (runs forever) from the <strong>Structure</strong> category. As you build, the Arduino C++ is generated live in the panel on the right.</p>
+
+        <h3>Toolbox categories</h3>
+        <ul>
+          <li><strong>Structure</strong> — setup() and loop() containers.</li>
+          <li><strong>Arduino I/O</strong> — pinMode, digital/analog read &amp; write, map.</li>
+          <li><strong>Time</strong> — delay, delayMicroseconds, millis.</li>
+          <li><strong>Serial</strong> — Serial.begin/print/println.</li>
+          <li><strong>Logic, Loops, Math, Text</strong> — standard programming blocks.</li>
+          <li><strong>Variables, Functions</strong> — your own variables and procedures.</li>
+        </ul>
+
+        <h3>The code panel</h3>
+        <p>The right panel is a full code editor. It auto-updates from your blocks until you type in it manually — after that, blocks stop overwriting your edits. Click <strong>Sync from Blocks</strong> to regenerate and discard manual changes. Drag the divider between the panels to resize them.</p>
+
+        <h3>Verify &amp; Upload</h3>
+        <p><strong>✓ Verify</strong> (Ctrl+R) compiles your sketch with arduino-cli and underlines any errors in the editor, showing the compiler output below. <strong>→ Upload</strong> (Ctrl+U) compiles and flashes it to the board selected in the dropdown — click <strong>⟳</strong> to rescan for connected boards.</p>
+
+        <h3>Files</h3>
+        <p>Use the <strong>File</strong> menu to create, open, and save <code>.ino</code> sketches (Ctrl+N / Ctrl+O / Ctrl+S). Sketches you save embed your blocks so they reopen exactly. Opening a hand-written <code>.ino</code> (made elsewhere) loads its code into the editor for editing.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="rpi-overlay">
+    <div id="rpi-panel">
+      <div id="rpi-header">
+        <h2>Raspberry Pi Connection</h2>
+        <button id="btn-rpi-close" title="Close">×</button>
+      </div>
+      <div id="rpi-form">
+        <label>Host / IP<input id="rpi-host" type="text" placeholder="192.168.1.50" /></label>
+        <label>Port<input id="rpi-port" type="number" value="22" /></label>
+        <label>Username<input id="rpi-user" type="text" placeholder="pi" /></label>
+        <label>Password<input id="rpi-pass" type="password" /></label>
+        <button id="btn-rpi-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="lib-overlay">
+    <div id="lib-panel">
+      <div id="lib-header">
+        <h2>Install Library</h2>
+        <button id="btn-lib-close" title="Close">×</button>
+      </div>
+      <div id="lib-form">
+        <label>Library name<input id="lib-name" type="text" placeholder="e.g. Servo, Adafruit NeoPixel" /></label>
+        <div id="lib-buttons">
+          <button id="btn-lib-search">Search</button>
+          <button id="btn-lib-install">Install</button>
+        </div>
+        <div id="lib-results"></div>
+      </div>
+    </div>
   </div>
 
   <script src="renderer.js"></script>

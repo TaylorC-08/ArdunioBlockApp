@@ -14,9 +14,31 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('file-save-as', { xml, code }),
   dialogUnsaved: (): Promise<number> =>
     ipcRenderer.invoke('dialog-unsaved'),
-  verifySketch: (code: string): Promise<VerifyResult> =>
-    ipcRenderer.invoke('verify-sketch', code),
+  verifySketch: (code: string, fqbn?: string): Promise<VerifyResult> =>
+    ipcRenderer.invoke('verify-sketch', code, fqbn),
+  listBoards: (): Promise<BoardPort[]> =>
+    ipcRenderer.invoke('list-boards'),
+  uploadSketch: (code: string, port: string, fqbn?: string): Promise<UploadResult> =>
+    ipcRenderer.invoke('upload-sketch', code, port, fqbn),
+  rpiDeploy: (code: string, conn: RpiConnection): Promise<DeployResult> =>
+    ipcRenderer.invoke('rpi-deploy', code, conn),
+  searchLibrary: (query: string): Promise<string[]> =>
+    ipcRenderer.invoke('search-library', query),
+  installLibrary: (name: string): Promise<UploadResult> =>
+    ipcRenderer.invoke('install-library', name),
 });
+
+interface RpiConnection {
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+}
+
+interface DeployResult {
+  success: boolean;
+  output: string;
+}
 
 interface Diagnostic {
   line: number;
@@ -29,4 +51,16 @@ interface VerifyResult {
   success: boolean;
   diagnostics: Diagnostic[];
   rawOutput: string;
+}
+
+interface BoardPort {
+  address: string;
+  protocol: string;
+  name: string | null;
+  fqbn: string | null;
+}
+
+interface UploadResult {
+  success: boolean;
+  output: string;
 }
