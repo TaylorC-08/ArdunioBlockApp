@@ -109,6 +109,9 @@ window.addEventListener('load', () => {
   const monacoContainer = document.getElementById('monaco-container') as HTMLElement;
   const btnSync        = document.getElementById('btn-sync')         as HTMLButtonElement;
   const btnClear       = document.getElementById('btn-clear')        as HTMLButtonElement;
+  const splitter       = document.getElementById('splitter')        as HTMLElement;
+  const outputPanel    = document.getElementById('output-panel')    as HTMLElement;
+  const wsContainer    = document.getElementById('workspace-container') as HTMLElement;
 
   initMonaco(monacoContainer);
 
@@ -168,6 +171,32 @@ window.addEventListener('load', () => {
   });
 
   window.addEventListener('resize', () => { Blockly.svgResize(workspace); layout(); });
+
+  // ---- Draggable splitter between workspace and code panel ----
+  let dragging = false;
+  splitter.addEventListener('mousedown', (e) => {
+    dragging = true;
+    e.preventDefault();
+    document.body.style.cursor = 'col-resize';
+    // Let mousemove reach window even over Blockly/Monaco.
+    blocklyDiv.style.pointerEvents = 'none';
+    outputPanel.style.pointerEvents = 'none';
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const rect = wsContainer.getBoundingClientRect();
+    const width = Math.max(200, Math.min(rect.right - e.clientX, rect.width - 200));
+    outputPanel.style.width = `${width}px`;
+    Blockly.svgResize(workspace);
+    layout();
+  });
+  window.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    document.body.style.cursor = '';
+    blocklyDiv.style.pointerEvents = '';
+    outputPanel.style.pointerEvents = '';
+  });
 
   // ---- File operations ----
 

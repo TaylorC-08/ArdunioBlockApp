@@ -71,7 +71,17 @@
     #blockly-div {
       flex: 1;
       height: 100%;
+      min-width: 0;
     }
+
+    #splitter {
+      width: 5px;
+      flex-shrink: 0;
+      cursor: col-resize;
+      background: #3e3e3e;
+      transition: background 0.15s;
+    }
+    #splitter:hover { background: #0e7ac4; }
 
     #output-panel {
       width: 320px;
@@ -138,6 +148,7 @@
 
   <div id="workspace-container">
     <div id="blockly-div"></div>
+    <div id="splitter"></div>
     <div id="output-panel">
       <div id="output-header">
         <h2>Generated Code</h2>
