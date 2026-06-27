@@ -45,3 +45,28 @@ export function onUserEdit(cb: () => void): void {
 export function layout(): void {
   editor?.layout();
 }
+
+interface Diag { line: number; column: number; severity: 'error' | 'warning'; message: string; }
+
+// Underline compiler errors/warnings in the editor gutter and text.
+export function setMarkers(diags: Diag[]): void {
+  const model = editor?.getModel();
+  if (!model) return;
+  const lineCount = model.getLineCount();
+  monaco.editor.setModelMarkers(model, 'arduino', diags.map(d => {
+    const line = Math.min(Math.max(d.line, 1), lineCount);
+    return {
+      startLineNumber: line,
+      startColumn: d.column,
+      endLineNumber: line,
+      endColumn: model.getLineMaxColumn(line),
+      message: d.message,
+      severity: d.severity === 'warning' ? monaco.MarkerSeverity.Warning : monaco.MarkerSeverity.Error,
+    };
+  }));
+}
+
+export function clearMarkers(): void {
+  const model = editor?.getModel();
+  if (model) monaco.editor.setModelMarkers(model, 'arduino', []);
+}

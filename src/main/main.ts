@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, Menu } from 'electron';
 import path from 'path';
 import { registerFileHandlers } from './fileHandlers';
+import { registerVerifyHandler } from './verifyHandler';
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -30,6 +31,12 @@ function createWindow(): void {
         { label: 'Save As...', accelerator: 'CmdOrCtrl+Shift+S', click: () => win.webContents.send('menu-cmd', 'file-save-as') },
       ],
     },
+    {
+      label: 'Sketch',
+      submenu: [
+        { label: 'Verify', accelerator: 'CmdOrCtrl+R', click: () => win.webContents.send('menu-cmd', 'verify') },
+      ],
+    },
   ]));
 
   win.loadFile(path.join(__dirname, '../renderer/index.html'));
@@ -40,6 +47,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  registerVerifyHandler();
   createWindow();
 
   app.on('activate', () => {

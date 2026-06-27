@@ -4,7 +4,7 @@ import {
   getCurrentFilePath, isDirty, setFilePath, markDirty,
   serializeWorkspace, loadWorkspace, parseFileContent,
 } from './fileManager';
-import { initMonaco, getContent, setContent, onUserEdit, layout } from './monacoEditor';
+import { initMonaco, getContent, setContent, onUserEdit, layout, setMarkers, clearMarkers } from './monacoEditor';
 
 const toolbox: Blockly.utils.toolbox.ToolboxDefinition = {
   kind: 'categoryToolbox',
@@ -112,6 +112,11 @@ window.addEventListener('load', () => {
   const splitter       = document.getElementById('splitter')        as HTMLElement;
   const outputPanel    = document.getElementById('output-panel')    as HTMLElement;
   const wsContainer    = document.getElementById('workspace-container') as HTMLElement;
+  const btnVerify      = document.getElementById('btn-verify')      as HTMLButtonElement;
+  const consoleEl      = document.getElementById('console')         as HTMLElement;
+  const consoleStatus  = document.getElementById('console-status')  as HTMLElement;
+  const consoleOutput  = document.getElementById('console-output')  as HTMLElement;
+  const btnConsoleClose = document.getElementById('btn-console-close') as HTMLButtonElement;
 
   initMonaco(monacoContainer);
 
@@ -198,6 +203,48 @@ window.addEventListener('load', () => {
     outputPanel.style.pointerEvents = '';
   });
 
+  // ---- Verify (compile via arduino-cli) ----
+  function showConsole(status: string, statusClass: string, output: string): void {
+    consoleStatus.textContent = status;
+    consoleStatus.className = statusClass;
+    consoleOutput.textContent = output;
+    consoleEl.classList.add('visible');
+    Blockly.svgResize(workspace);
+    layout();
+  }
+
+  function hideConsole(): void {
+    consoleEl.classList.remove('visible');
+    Blockly.svgResize(workspace);
+    layout();
+  }
+
+  let verifying = false;
+  async function verify(): Promise<void> {
+    if (verifying) return;
+    verifying = true;
+    btnVerify.disabled = true;
+    clearMarkers();
+    showConsole('Compiling…', 'busy', 'Compiling sketch with arduino-cli (arduino:avr:uno)…');
+    try {
+      const result = await window.electronAPI.verifySketch(getContent());
+      setMarkers(result.diagnostics);
+      if (result.success) {
+        const warnings = result.diagnostics.filter(d => d.severity === 'warning').length;
+        showConsole(warnings ? `Done — ${warnings} warning(s)` : 'Done compiling. No errors.', 'ok', result.rawOutput);
+      } else {
+        const errors = result.diagnostics.filter(d => d.severity === 'error').length;
+        showConsole(errors ? `Failed — ${errors} error(s)` : 'Compilation failed', 'error', result.rawOutput);
+      }
+    } finally {
+      verifying = false;
+      btnVerify.disabled = false;
+    }
+  }
+
+  btnVerify.addEventListener('click', verify);
+  btnConsoleClose.addEventListener('click', hideConsole);
+
   // ---- File operations ----
 
   async function checkUnsaved(): Promise<boolean> {
@@ -274,5 +321,6 @@ window.addEventListener('load', () => {
     else if (cmd === 'file-open')    await fileOpen();
     else if (cmd === 'file-save')    await doSave();
     else if (cmd === 'file-save-as') await doSaveAs();
+    else if (cmd === 'verify')       await verify();
   });
 });

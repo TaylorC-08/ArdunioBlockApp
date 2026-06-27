@@ -14,4 +14,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('file-save-as', { xml, code }),
   dialogUnsaved: (): Promise<number> =>
     ipcRenderer.invoke('dialog-unsaved'),
+  verifySketch: (code: string): Promise<VerifyResult> =>
+    ipcRenderer.invoke('verify-sketch', code),
 });
+
+interface Diagnostic {
+  line: number;
+  column: number;
+  severity: 'error' | 'warning';
+  message: string;
+}
+
+interface VerifyResult {
+  success: boolean;
+  diagnostics: Diagnostic[];
+  rawOutput: string;
+}

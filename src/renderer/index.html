@@ -62,6 +62,13 @@
     }
     #btn-clear:hover { background: #4e4e4e; }
 
+    #btn-verify {
+      background: #2e8b57;
+      color: #fff;
+    }
+    #btn-verify:hover { background: #36a366; }
+    #btn-verify:disabled { background: #3e3e3e; color: #7d7d7d; cursor: default; }
+
     #workspace-container {
       display: flex;
       flex: 1;
@@ -137,13 +144,68 @@
     .blocklyTreeRow:hover {
       background: #333334 !important;
     }
+
+    /* Verify output console (hidden until first verify) */
+    #console {
+      height: 170px;
+      display: none;
+      flex-direction: column;
+      flex-shrink: 0;
+      border-top: 1px solid #3e3e3e;
+      background: #181818;
+    }
+    #console.visible { display: flex; }
+
+    #console-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 12px;
+      border-bottom: 1px solid #3e3e3e;
+    }
+
+    #console-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #9d9d9d;
+    }
+
+    #console-status { font-size: 12px; margin-right: auto; }
+    #console-status.ok    { color: #4ec94e; }
+    #console-status.error { color: #f48771; }
+    #console-status.busy  { color: #d7ba7d; }
+
+    #btn-console-close {
+      background: none;
+      border: none;
+      color: #9d9d9d;
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0 4px;
+    }
+    #btn-console-close:hover { color: #e8e8e8; }
+
+    #console-output {
+      flex: 1;
+      overflow: auto;
+      padding: 8px 12px;
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #d4d4d4;
+    }
   </style>
 </head>
 <body>
   <div id="toolbar">
     <h1>Arduino Block App</h1>
     <button id="btn-clear">Clear</button>
-    <button id="btn-generate">Generate Code</button>
+    <button id="btn-verify">✓ Verify</button>
   </div>
 
   <div id="workspace-container">
@@ -156,6 +218,15 @@
       </div>
       <div id="monaco-container"></div>
     </div>
+  </div>
+
+  <div id="console">
+    <div id="console-header">
+      <span id="console-title">Output</span>
+      <span id="console-status"></span>
+      <button id="btn-console-close" title="Close">×</button>
+    </div>
+    <pre id="console-output"></pre>
   </div>
 
   <script src="renderer.js"></script>
