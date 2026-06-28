@@ -39,7 +39,7 @@ Blockly.defineBlocksWithJsonArray([
     type: 'arduino_pin_mode',
     message0: 'set pin %1 mode %2',
     args0: [
-      { type: 'field_number', name: 'PIN', value: 13, min: 0, max: 53, precision: 1 },
+      { type: 'field_input', name: 'PIN', text: '13' },
       { type: 'field_dropdown', name: 'MODE', options: [
         ['OUTPUT', 'OUTPUT'],
         ['INPUT', 'INPUT'],
@@ -55,7 +55,7 @@ Blockly.defineBlocksWithJsonArray([
     type: 'arduino_digital_write',
     message0: 'digitalWrite pin %1 → %2',
     args0: [
-      { type: 'field_number', name: 'PIN', value: 13, min: 0, max: 53, precision: 1 },
+      { type: 'field_input', name: 'PIN', text: '13' },
       { type: 'field_dropdown', name: 'VALUE', options: [
         ['HIGH', 'HIGH'],
         ['LOW', 'LOW'],
@@ -70,17 +70,30 @@ Blockly.defineBlocksWithJsonArray([
     type: 'arduino_digital_read',
     message0: 'digitalRead pin %1',
     args0: [
-      { type: 'field_number', name: 'PIN', value: 2, min: 0, max: 53, precision: 1 },
+      { type: 'field_input', name: 'PIN', text: '2' },
     ],
     output: 'Number',
     colour: 180,
     tooltip: 'Read the value of a digital pin (HIGH=1, LOW=0)',
   },
   {
+    type: 'arduino_level',
+    message0: '%1',
+    args0: [
+      { type: 'field_dropdown', name: 'LEVEL', options: [
+        ['HIGH', 'HIGH'],
+        ['LOW', 'LOW'],
+      ]},
+    ],
+    output: 'Number',
+    colour: 180,
+    tooltip: 'Digital logic level constant (HIGH or LOW)',
+  },
+  {
     type: 'arduino_analog_write',
     message0: 'analogWrite pin %1 value %2',
     args0: [
-      { type: 'field_number', name: 'PIN', value: 9, min: 0, max: 13, precision: 1 },
+      { type: 'field_input', name: 'PIN', text: '9' },
       { type: 'input_value', name: 'VALUE', check: 'Number' },
     ],
     previousStatement: null,
@@ -90,9 +103,9 @@ Blockly.defineBlocksWithJsonArray([
   },
   {
     type: 'arduino_analog_read',
-    message0: 'analogRead pin A%1',
+    message0: 'analogRead pin %1',
     args0: [
-      { type: 'field_number', name: 'PIN', value: 0, min: 0, max: 15, precision: 1 },
+      { type: 'field_input', name: 'PIN', text: 'A0' },
     ],
     output: 'Number',
     colour: 230,
@@ -230,6 +243,10 @@ arduinoGenerator.forBlock['arduino_analog_write'] = function(block, generator) {
 arduinoGenerator.forBlock['arduino_analog_read'] = function(block) {
   const pin = block.getFieldValue('PIN');
   return [`analogRead(${pin})`, ArduinoGenerator.ORDER_UNARY_POSTFIX];
+};
+
+arduinoGenerator.forBlock['arduino_level'] = function(block) {
+  return [block.getFieldValue('LEVEL'), ArduinoGenerator.ORDER_ATOMIC];
 };
 
 arduinoGenerator.forBlock['arduino_delay'] = function(block, generator) {

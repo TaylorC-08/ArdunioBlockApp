@@ -29,6 +29,7 @@ function createWindow(): void {
       submenu: [
         { label: 'New',        accelerator: 'CmdOrCtrl+N',       click: () => win.webContents.send('menu-cmd', 'file-new') },
         { label: 'Open...',    accelerator: 'CmdOrCtrl+O',       click: () => win.webContents.send('menu-cmd', 'file-open') },
+        { label: 'Examples…',  accelerator: 'CmdOrCtrl+E',       click: () => win.webContents.send('menu-cmd', 'show-examples') },
         { type: 'separator' },
         { label: 'Save',       accelerator: 'CmdOrCtrl+S',       click: () => win.webContents.send('menu-cmd', 'file-save') },
         { label: 'Save As...', accelerator: 'CmdOrCtrl+Shift+S', click: () => win.webContents.send('menu-cmd', 'file-save-as') },

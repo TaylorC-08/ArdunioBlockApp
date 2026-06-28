@@ -6,6 +6,7 @@ import {
 } from './fileManager';
 import { initMonaco, getContent, setContent, onUserEdit, layout, setMarkers, clearMarkers, setLanguage } from './monacoEditor';
 import { parseCodeToWorkspace } from './importer';
+import { exampleCategories } from './examples/index';
 import { rpiToolbox, pythonGenerator } from './rpi/index';
 
 const toolbox: Blockly.utils.toolbox.ToolboxDefinition = {
@@ -31,6 +32,7 @@ const toolbox: Blockly.utils.toolbox.ToolboxDefinition = {
         { kind: 'block', type: 'arduino_pin_mode' },
         { kind: 'block', type: 'arduino_digital_write' },
         { kind: 'block', type: 'arduino_digital_read' },
+        { kind: 'block', type: 'arduino_level' },
         { kind: 'block', type: 'arduino_analog_write' },
         { kind: 'block', type: 'arduino_analog_read' },
         { kind: 'block', type: 'arduino_map' },
@@ -143,6 +145,10 @@ window.addEventListener('load', () => {
   const btnLibSearch   = document.getElementById('btn-lib-search')  as HTMLButtonElement;
   const libName        = document.getElementById('lib-name')        as HTMLInputElement;
   const libResults     = document.getElementById('lib-results')     as HTMLElement;
+  const btnExamples    = document.getElementById('btn-examples')    as HTMLButtonElement;
+  const examplesOverlay = document.getElementById('examples-overlay') as HTMLElement;
+  const btnExamplesClose = document.getElementById('btn-examples-close') as HTMLButtonElement;
+  const examplesList   = document.getElementById('examples-list')   as HTMLElement;
 
   initMonaco(monacoContainer);
 
@@ -157,6 +163,38 @@ window.addEventListener('load', () => {
   const rpiWorkspace = Blockly.inject(blocklyDivRpi, { toolbox: rpiToolbox, ...blocklyConfig });
 
   Blockly.svgResize(workspace);
+
+  // ---- Text prompt for Blockly (Electron has no window.prompt, so the default
+  // "Create variable…" / "Rename variable…" dialogs silently fail). ----
+  const promptOverlay  = document.getElementById('prompt-overlay')  as HTMLElement;
+  const promptMessage  = document.getElementById('prompt-message')  as HTMLElement;
+  const promptInput    = document.getElementById('prompt-input')    as HTMLInputElement;
+  const btnPromptOk    = document.getElementById('btn-prompt-ok')   as HTMLButtonElement;
+  const btnPromptCancel = document.getElementById('btn-prompt-cancel') as HTMLButtonElement;
+
+  let promptCallback: ((value: string | null) => void) | null = null;
+  function closePrompt(value: string | null): void {
+    if (!promptCallback) return;
+    const cb = promptCallback;
+    promptCallback = null;
+    promptOverlay.classList.remove('visible');
+    cb(value);
+  }
+  Blockly.dialog.setPrompt((message, defaultValue, callback) => {
+    promptCallback = callback;
+    promptMessage.textContent = message;
+    promptInput.value = defaultValue ?? '';
+    promptOverlay.classList.add('visible');
+    promptInput.focus();
+    promptInput.select();
+  });
+  btnPromptOk.addEventListener('click', () => closePrompt(promptInput.value));
+  btnPromptCancel.addEventListener('click', () => closePrompt(null));
+  promptInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); closePrompt(promptInput.value); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closePrompt(null); }
+  });
+  promptOverlay.addEventListener('click', (e) => { if (e.target === promptOverlay) closePrompt(null); });
 
   // 'arduino' | 'rpi' — which environment is active.
   let activeTab = 'arduino';
@@ -482,7 +520,7 @@ window.addEventListener('load', () => {
   });
   libName.addEventListener('keydown', (e) => { if (e.key === 'Enter') void runLibSearch(); });
 
-  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { hideHelp(); hideRpiSettings(); hideLibOverlay(); } });
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { hideHelp(); hideRpiSettings(); hideLibOverlay(); hideExamples(); } });
 
   // ---- Import: generate blocks from the editor's code (constrained subset) ----
   function importBlocks(): void {
@@ -502,6 +540,59 @@ window.addEventListener('load', () => {
       showConsole('Blocks generated', 'ok', msg);
     }
   }
+
+  // ---- Examples: load a bundled Arduino sketch and generate blocks from it ----
+  async function loadExample(code: string): Promise<void> {
+    hideExamples();
+    if (!await checkUnsaved()) return;
+    if (activeTab !== 'arduino') setActiveTab('arduino');
+    isLoadingFromFile = true;
+    setContent(code);                 // editor keeps the example verbatim, comments and all
+    const result = parseCodeToWorkspace(workspace, code);
+    isLoadingFromFile = false;
+    manualEdit = true;                // blocks are an aid; the loaded code stays authoritative
+    setFilePath(null);
+    markDirty(true);
+    if (result.imported === 0) {
+      showConsole('Loaded as code', 'busy',
+        'Loaded the example into the editor. No blocks could be generated from it; edit it as code.');
+    } else {
+      let msg = `Loaded example — generated ${result.imported} block statement(s).`;
+      if (result.skipped.length) {
+        msg += `\n\n${result.skipped.length} line(s) could not be converted (left as code only):\n` +
+          result.skipped.map(s => '  • ' + s).join('\n');
+      }
+      showConsole('Example loaded', 'ok', msg);
+    }
+  }
+
+  function showExamples(): void {
+    if (examplesList.childElementCount === 0) {
+      for (const cat of exampleCategories) {
+        const h = document.createElement('h3');
+        h.textContent = cat.name;
+        examplesList.appendChild(h);
+        for (const ex of cat.examples) {
+          const b = document.createElement('button');
+          const name = document.createElement('div');
+          name.className = 'ex-name';
+          name.textContent = ex.name;
+          const desc = document.createElement('div');
+          desc.className = 'ex-desc';
+          desc.textContent = ex.description;
+          b.append(name, desc);
+          b.addEventListener('click', () => void loadExample(ex.code));
+          examplesList.appendChild(b);
+        }
+      }
+    }
+    examplesOverlay.classList.add('visible');
+  }
+  function hideExamples(): void { examplesOverlay.classList.remove('visible'); }
+
+  btnExamples.addEventListener('click', showExamples);
+  btnExamplesClose.addEventListener('click', hideExamples);
+  examplesOverlay.addEventListener('click', (e) => { if (e.target === examplesOverlay) hideExamples(); });
 
   // ---- File operations ----
 
@@ -589,5 +680,6 @@ window.addEventListener('load', () => {
     else if (cmd === 'show-tutorial') showHelp();
     else if (cmd === 'import-blocks') importBlocks();
     else if (cmd === 'install-library') showLibOverlay();
+    else if (cmd === 'show-examples') showExamples();
   });
 });

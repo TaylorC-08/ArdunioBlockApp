@@ -53,3 +53,9 @@ interface ElectronAPI {
 declare interface Window {
   electronAPI: ElectronAPI;
 }
+
+// .ino example sketches are imported as raw text via esbuild's text loader
+declare module '*.ino' {
+  const content: string;
+  export default content;
+}

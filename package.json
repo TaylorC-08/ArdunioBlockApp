@@ -5,7 +5,7 @@
   "main": "dist/main/main.js",
   "scripts": {
     "build:main": "tsc",
-    "build:renderer": "esbuild src/renderer/renderer.ts --bundle --outfile=dist/renderer/renderer.js --platform=browser --sourcemap --loader:.ttf=file",
+    "build:renderer": "esbuild src/renderer/renderer.ts --bundle --outfile=dist/renderer/renderer.js --platform=browser --sourcemap --loader:.ttf=file --loader:.ino=text",
     "build:worker": "esbuild node_modules/monaco-editor/esm/vs/editor/editor.worker.js --bundle --outfile=dist/renderer/editor.worker.js --platform=browser",
     "build:assets": "node scripts/copy-assets.js",
     "build": "npm run build:main && npm run build:renderer && npm run build:worker && npm run build:assets",
