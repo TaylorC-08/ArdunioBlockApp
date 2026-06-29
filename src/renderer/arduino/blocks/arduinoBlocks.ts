@@ -36,6 +36,17 @@ Blockly.defineBlocksWithJsonArray([
     tooltip: 'Include a library header, e.g. Servo.h. Emitted at the top of the sketch.',
   },
   {
+    type: 'arduino_comment',
+    message0: '// %1',
+    args0: [
+      { type: 'field_input', name: 'TEXT', text: 'comment' },
+    ],
+    previousStatement: null,
+    nextStatement: null,
+    colour: '#808080',
+    tooltip: 'A code comment. It documents your program but does nothing when it runs.',
+  },
+  {
     type: 'arduino_pin_mode',
     message0: 'set pin %1 mode %2',
     args0: [
@@ -381,6 +392,10 @@ arduinoGenerator.forBlock['arduino_loop'] = function(block, generator) {
   const code = inner ? (generator.blockToCode(inner) as string) : '';
   (generator as ArduinoGenerator).loopCode_ += code;
   return '';
+};
+
+arduinoGenerator.forBlock['arduino_comment'] = function(block) {
+  return `// ${block.getFieldValue('TEXT')}\n`;
 };
 
 arduinoGenerator.forBlock['arduino_pin_mode'] = function(block) {

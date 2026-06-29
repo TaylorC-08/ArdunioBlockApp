@@ -21,6 +21,7 @@ const toolbox: Blockly.utils.toolbox.ToolboxDefinition = {
         { kind: 'block', type: 'arduino_setup' },
         { kind: 'block', type: 'arduino_loop' },
         { kind: 'block', type: 'arduino_include' },
+        { kind: 'block', type: 'arduino_comment' },
       ],
     },
     // ---- Arduino-specific ----
