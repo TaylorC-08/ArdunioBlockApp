@@ -26,6 +26,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('search-library', query),
   installLibrary: (name: string): Promise<UploadResult> =>
     ipcRenderer.invoke('install-library', name),
+  serialMonitorStart: (port: string, baud: number): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('serial-monitor-start', port, baud),
+  serialMonitorSend: (text: string, lineEnding: string): Promise<void> =>
+    ipcRenderer.invoke('serial-monitor-send', text, lineEnding),
+  serialMonitorStop: (): Promise<void> =>
+    ipcRenderer.invoke('serial-monitor-stop'),
+  onSerialData: (cb: (text: string) => void): void => {
+    ipcRenderer.on('serial-data', (_event, text: string) => cb(text));
+  },
+  onSerialClosed: (cb: (message: string) => void): void => {
+    ipcRenderer.on('serial-closed', (_event, message: string) => cb(message));
+  },
 });
 
 interface RpiConnection {

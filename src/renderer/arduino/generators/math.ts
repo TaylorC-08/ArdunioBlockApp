@@ -78,6 +78,12 @@ arduinoGenerator.forBlock['math_constrain'] = function(block, generator) {
   return [`constrain(${value}, ${low}, ${high})`, ArduinoGenerator.ORDER_UNARY_POSTFIX];
 };
 
+arduinoGenerator.forBlock['math_modulo'] = function(block, generator) {
+  const dividend = generator.valueToCode(block, 'DIVIDEND', ArduinoGenerator.ORDER_MULTIPLICATIVE) || '0';
+  const divisor  = generator.valueToCode(block, 'DIVISOR',  ArduinoGenerator.ORDER_MULTIPLICATIVE) || '1';
+  return [`${dividend} % ${divisor}`, ArduinoGenerator.ORDER_MULTIPLICATIVE];
+};
+
 arduinoGenerator.forBlock['math_random_int'] = function(block, generator) {
   const from = generator.valueToCode(block, 'FROM', ArduinoGenerator.ORDER_NONE) || '0';
   const to   = generator.valueToCode(block, 'TO',   ArduinoGenerator.ORDER_NONE) || '100';

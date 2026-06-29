@@ -25,8 +25,13 @@ arduinoGenerator.forBlock['controls_for'] = function(block, generator) {
   const to   = generator.valueToCode(block, 'TO',   ArduinoGenerator.ORDER_ASSIGNMENT) || '0';
   const by   = generator.valueToCode(block, 'BY',   ArduinoGenerator.ORDER_ASSIGNMENT) || '1';
   const branch = generator.statementToCode(block, 'DO');
+  // Count down when both bounds are integer literals and FROM > TO; otherwise count up.
+  const lit = (s: string) => /^-?\d+$/.test(s);
+  const down = lit(from) && lit(to) && Number(from) > Number(to);
+  const cmp  = down ? '>=' : '<=';
+  const step = down ? `-= ${by}` : `+= ${by}`;
   // Variable is already globally declared by the variables generator
-  return `for (${varName} = ${from}; ${varName} <= ${to}; ${varName} += ${by}) {\n${branch}}\n`;
+  return `for (${varName} = ${from}; ${varName} ${cmp} ${to}; ${varName} ${step}) {\n${branch}}\n`;
 };
 
 arduinoGenerator.forBlock['controls_flow_statements'] = function(block) {

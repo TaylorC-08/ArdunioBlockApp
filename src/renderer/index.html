@@ -56,11 +56,11 @@
     }
     #btn-generate:hover { background: #1089d4; }
 
-    #btn-clear {
+    #btn-clear, #btn-undo, #btn-redo, #btn-tidy {
       background: #3e3e3e;
       color: #d4d4d4;
     }
-    #btn-clear:hover { background: #4e4e4e; }
+    #btn-clear:hover, #btn-undo:hover, #btn-redo:hover, #btn-tidy:hover { background: #4e4e4e; }
 
     #btn-verify {
       background: #2e8b57;
@@ -169,7 +169,7 @@
       margin-right: auto;
     }
 
-    #btn-sync {
+    #btn-sync, #btn-import {
       padding: 4px 10px;
       border: none;
       border-radius: 4px;
@@ -180,7 +180,7 @@
       color: #d4d4d4;
       transition: background 0.15s;
     }
-    #btn-sync:hover { background: #4e4e4e; }
+    #btn-sync:hover, #btn-import:hover { background: #4e4e4e; }
 
     #monaco-container {
       flex: 1;
@@ -252,6 +252,106 @@
       word-break: break-word;
       color: #d4d4d4;
     }
+
+    /* Serial Monitor panel */
+    #serial {
+      height: 220px;
+      display: none;
+      flex-direction: column;
+      flex-shrink: 0;
+      border-top: 1px solid #3e3e3e;
+      background: #181818;
+    }
+    #serial.visible { display: flex; }
+
+    #serial-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-bottom: 1px solid #3e3e3e;
+    }
+    #serial-header #console-title { margin-right: auto; }
+
+    #serial-status { font-size: 12px; }
+    #serial-status.ok   { color: #4ec94e; }
+    #serial-status.off  { color: #9d9d9d; }
+    #serial-status.busy { color: #d7ba7d; }
+
+    #serial-baud, #serial-ending {
+      background: #2d2d2d;
+      color: #d4d4d4;
+      border: 1px solid #3e3e3e;
+      border-radius: 4px;
+      padding: 3px 6px;
+      font-size: 12px;
+    }
+
+    #serial-header button, #serial-input-row button {
+      padding: 4px 10px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      background: #3e3e3e;
+      color: #d4d4d4;
+      transition: background 0.15s;
+    }
+    #serial-header button:hover, #serial-input-row button:hover { background: #4e4e4e; }
+    #btn-serial-toggle.connected { background: #2f6f43; }
+    #btn-serial-toggle.connected:hover { background: #36824e; }
+
+    #btn-serial-close {
+      background: none;
+      color: #9d9d9d;
+      font-size: 18px;
+      line-height: 1;
+      padding: 0 4px;
+    }
+    #btn-serial-close:hover { color: #e8e8e8; background: none; }
+
+    #serial-output {
+      flex: 1;
+      overflow: auto;
+      margin: 0;
+      padding: 8px 12px;
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #b6e3b6;
+    }
+
+    #serial-input-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-top: 1px solid #3e3e3e;
+    }
+    #serial-input {
+      flex: 1;
+      background: #2d2d2d;
+      color: #d4d4d4;
+      border: 1px solid #3e3e3e;
+      border-radius: 4px;
+      padding: 5px 8px;
+      font-size: 12px;
+    }
+    #serial-input:focus { outline: none; border-color: #5a5a5a; }
+
+    #serial-plot {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      display: block;
+      background: #141414;
+    }
+    #serial-plot.hidden { display: none; }
+    #btn-serial-plot.active { background: #2f5d8f; }
+    #btn-serial-plot.active:hover { background: #366aa3; }
 
     /* Getting Started overlay */
     #help-overlay {
@@ -482,11 +582,15 @@
       <button id="btn-refresh-boards" title="Rescan for connected boards">⟳</button>
       <button id="btn-verify">✓ Verify</button>
       <button id="btn-upload">→ Upload</button>
+      <button id="btn-serial" title="Open the Serial Monitor (Ctrl+M)">⊟ Serial Monitor</button>
     </span>
     <span id="rpi-actions" class="hidden">
       <button id="btn-rpi-settings">⚙ Pi Settings</button>
       <button id="btn-rpi-run">▶ Run on Pi</button>
     </span>
+    <button id="btn-undo" title="Undo (Ctrl+Z)">↶</button>
+    <button id="btn-redo" title="Redo (Ctrl+Y)">↷</button>
+    <button id="btn-tidy" title="Tidy up blocks and fit them to the view">⊡ Tidy</button>
     <button id="btn-clear">Clear</button>
   </div>
 
@@ -502,6 +606,7 @@
     <div id="output-panel">
       <div id="output-header">
         <h2>Generated Code</h2>
+        <button id="btn-import" title="Try to generate blocks from the code typed in the editor">Code → Blocks</button>
         <button id="btn-sync">Sync from Blocks</button>
       </div>
       <div id="monaco-container"></div>
@@ -515,6 +620,42 @@
       <button id="btn-console-close" title="Close">×</button>
     </div>
     <pre id="console-output"></pre>
+  </div>
+
+  <div id="serial">
+    <div id="serial-header">
+      <span id="console-title">Serial Monitor</span>
+      <span id="serial-status"></span>
+      <select id="serial-baud" title="Baud rate">
+        <option value="300">300</option>
+        <option value="1200">1200</option>
+        <option value="2400">2400</option>
+        <option value="4800">4800</option>
+        <option value="9600" selected>9600</option>
+        <option value="19200">19200</option>
+        <option value="38400">38400</option>
+        <option value="57600">57600</option>
+        <option value="74880">74880</option>
+        <option value="115200">115200</option>
+        <option value="250000">250000</option>
+      </select>
+      <button id="btn-serial-toggle">Connect</button>
+      <button id="btn-serial-plot" title="Switch between text and a live plot of numeric values">📈 Plot</button>
+      <button id="btn-serial-clear" title="Clear output">Clear</button>
+      <button id="btn-serial-close" title="Close">×</button>
+    </div>
+    <pre id="serial-output"></pre>
+    <canvas id="serial-plot" class="hidden"></canvas>
+    <div id="serial-input-row">
+      <input id="serial-input" type="text" placeholder="Type a message to send to the board…" autocomplete="off" />
+      <select id="serial-ending" title="Line ending appended to sent messages">
+        <option value="">No line ending</option>
+        <option value="\n" selected>Newline</option>
+        <option value="\r">Carriage return</option>
+        <option value="\r\n">Both NL &amp; CR</option>
+      </select>
+      <button id="btn-serial-send">Send</button>
+    </div>
   </div>
 
   <div id="help-overlay">

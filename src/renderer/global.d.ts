@@ -48,6 +48,11 @@ interface ElectronAPI {
   rpiDeploy: (code: string, conn: RpiConnection) => Promise<DeployResult>;
   searchLibrary: (query: string) => Promise<string[]>;
   installLibrary: (name: string) => Promise<UploadResult>;
+  serialMonitorStart: (port: string, baud: number) => Promise<{ success: boolean; error?: string }>;
+  serialMonitorSend: (text: string, lineEnding: string) => Promise<void>;
+  serialMonitorStop: () => Promise<void>;
+  onSerialData: (cb: (text: string) => void) => void;
+  onSerialClosed: (cb: (message: string) => void) => void;
 }
 
 declare interface Window {

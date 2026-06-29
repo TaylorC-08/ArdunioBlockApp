@@ -31,11 +31,15 @@ const toolbox: Blockly.utils.toolbox.ToolboxDefinition = {
       contents: [
         { kind: 'block', type: 'arduino_pin_mode' },
         { kind: 'block', type: 'arduino_digital_write' },
+        { kind: 'block', type: 'arduino_digital_write_expr' },
         { kind: 'block', type: 'arduino_digital_read' },
         { kind: 'block', type: 'arduino_level' },
         { kind: 'block', type: 'arduino_analog_write' },
         { kind: 'block', type: 'arduino_analog_read' },
         { kind: 'block', type: 'arduino_map' },
+        { kind: 'block', type: 'arduino_tone' },
+        { kind: 'block', type: 'arduino_no_tone' },
+        { kind: 'block', type: 'arduino_pulse_in' },
       ],
     },
     {
@@ -56,6 +60,11 @@ const toolbox: Blockly.utils.toolbox.ToolboxDefinition = {
         { kind: 'block', type: 'arduino_serial_begin' },
         { kind: 'block', type: 'arduino_serial_print' },
         { kind: 'block', type: 'arduino_serial_println' },
+        { kind: 'block', type: 'arduino_serial_print_format' },
+        { kind: 'block', type: 'arduino_serial_write' },
+        { kind: 'block', type: 'arduino_serial_available' },
+        { kind: 'block', type: 'arduino_serial_read' },
+        { kind: 'block', type: 'arduino_serial_parse_int' },
       ],
     },
     { kind: 'sep' },
@@ -70,6 +79,7 @@ const toolbox: Blockly.utils.toolbox.ToolboxDefinition = {
         { kind: 'block', type: 'logic_operation' },
         { kind: 'block', type: 'logic_negate' },
         { kind: 'block', type: 'logic_boolean' },
+        { kind: 'block', type: 'arduino_char_type' },
       ],
     },
     {
@@ -80,6 +90,8 @@ const toolbox: Blockly.utils.toolbox.ToolboxDefinition = {
         { kind: 'block', type: 'controls_repeat_ext' },
         { kind: 'block', type: 'controls_whileUntil' },
         { kind: 'block', type: 'controls_for' },
+        { kind: 'block', type: 'arduino_for_dir' },
+        { kind: 'block', type: 'controls_flow_statements' },
       ],
     },
     {
@@ -89,6 +101,7 @@ const toolbox: Blockly.utils.toolbox.ToolboxDefinition = {
       contents: [
         { kind: 'block', type: 'math_number' },
         { kind: 'block', type: 'math_arithmetic' },
+        { kind: 'block', type: 'math_modulo' },
         { kind: 'block', type: 'math_single' },
         { kind: 'block', type: 'math_constrain' },
         { kind: 'block', type: 'math_random_int' },
@@ -100,8 +113,52 @@ const toolbox: Blockly.utils.toolbox.ToolboxDefinition = {
       colour: '#5CA68D',
       contents: [
         { kind: 'block', type: 'text' },
+        { kind: 'block', type: 'arduino_char' },
         { kind: 'block', type: 'text_print' },
         { kind: 'block', type: 'text_join' },
+      ],
+    },
+    {
+      kind: 'category',
+      name: 'Strings',
+      colour: '#5C9EA6',
+      contents: [
+        { kind: 'block', type: 'arduino_string' },
+        { kind: 'block', type: 'arduino_string_fmt' },
+        { kind: 'block', type: 'arduino_str_length' },
+        { kind: 'block', type: 'arduino_str_toint' },
+        { kind: 'block', type: 'arduino_str_charat' },
+        { kind: 'block', type: 'arduino_str_substring' },
+        { kind: 'block', type: 'arduino_str_indexof' },
+        { kind: 'block', type: 'arduino_str_compare' },
+        { kind: 'block', type: 'arduino_str_void' },
+        { kind: 'block', type: 'arduino_str_replace' },
+        { kind: 'block', type: 'arduino_str_setcharat' },
+        { kind: 'block', type: 'arduino_str_concat' },
+        { kind: 'block', type: 'arduino_str_reserve' },
+        { kind: 'block', type: 'arduino_compound_assign' },
+        { kind: 'block', type: 'arduino_cast' },
+      ],
+    },
+    {
+      kind: 'category',
+      name: 'Arrays',
+      colour: '#7C5CA6',
+      contents: [
+        { kind: 'block', type: 'arduino_array_get' },
+        { kind: 'block', type: 'arduino_array_set' },
+        { kind: 'block', type: 'arduino_array_get2' },
+        { kind: 'block', type: 'arduino_array_set2' },
+      ],
+    },
+    {
+      kind: 'category',
+      name: 'Libraries',
+      colour: '#A6602C',
+      contents: [
+        { kind: 'block', type: 'arduino_lib_stmt' },
+        { kind: 'block', type: 'arduino_lib_value' },
+        { kind: 'block', type: 'arduino_return' },
       ],
     },
     { kind: 'category', name: 'Variables', colour: '#A65C81', custom: 'VARIABLE' },
@@ -113,7 +170,11 @@ window.addEventListener('load', () => {
   const blocklyDiv     = document.getElementById('blockly-div')      as HTMLElement;
   const monacoContainer = document.getElementById('monaco-container') as HTMLElement;
   const btnSync        = document.getElementById('btn-sync')         as HTMLButtonElement;
+  const btnImport      = document.getElementById('btn-import')        as HTMLButtonElement;
   const btnClear       = document.getElementById('btn-clear')        as HTMLButtonElement;
+  const btnUndo        = document.getElementById('btn-undo')          as HTMLButtonElement;
+  const btnRedo        = document.getElementById('btn-redo')          as HTMLButtonElement;
+  const btnTidy        = document.getElementById('btn-tidy')          as HTMLButtonElement;
   const splitter       = document.getElementById('splitter')        as HTMLElement;
   const outputPanel    = document.getElementById('output-panel')    as HTMLElement;
   const wsContainer    = document.getElementById('workspace-container') as HTMLElement;
@@ -125,6 +186,19 @@ window.addEventListener('load', () => {
   const consoleStatus  = document.getElementById('console-status')  as HTMLElement;
   const consoleOutput  = document.getElementById('console-output')  as HTMLElement;
   const btnConsoleClose = document.getElementById('btn-console-close') as HTMLButtonElement;
+  const btnSerial      = document.getElementById('btn-serial')        as HTMLButtonElement;
+  const serialPanel    = document.getElementById('serial')           as HTMLElement;
+  const serialOutput   = document.getElementById('serial-output')    as HTMLElement;
+  const serialStatus   = document.getElementById('serial-status')    as HTMLElement;
+  const serialBaud     = document.getElementById('serial-baud')      as HTMLSelectElement;
+  const serialInput    = document.getElementById('serial-input')     as HTMLInputElement;
+  const serialEnding   = document.getElementById('serial-ending')    as HTMLSelectElement;
+  const btnSerialToggle = document.getElementById('btn-serial-toggle') as HTMLButtonElement;
+  const btnSerialClear = document.getElementById('btn-serial-clear')  as HTMLButtonElement;
+  const btnSerialClose = document.getElementById('btn-serial-close')  as HTMLButtonElement;
+  const btnSerialSend  = document.getElementById('btn-serial-send')   as HTMLButtonElement;
+  const serialPlot     = document.getElementById('serial-plot')      as HTMLCanvasElement;
+  const btnSerialPlot  = document.getElementById('btn-serial-plot')   as HTMLButtonElement;
   const helpOverlay    = document.getElementById('help-overlay')    as HTMLElement;
   const btnHelpClose   = document.getElementById('btn-help-close')  as HTMLButtonElement;
   const blocklyDivRpi  = document.getElementById('blockly-div-rpi') as HTMLElement;
@@ -269,6 +343,10 @@ window.addEventListener('load', () => {
   }
 
   btnSync.addEventListener('click', syncFromBlocks);
+  btnImport.addEventListener('click', () => {
+    if (activeTab !== 'arduino') setActiveTab('arduino');   // blocks are generated into the Arduino workspace
+    importBlocks();
+  });
   btnClear.addEventListener('click', () => {
     activeWorkspace().clear();
     manualEdit = false;
@@ -276,7 +354,15 @@ window.addEventListener('load', () => {
     markDirty(true);
   });
 
-  window.addEventListener('resize', () => { Blockly.svgResize(activeWorkspace()); layout(); });
+  btnUndo.addEventListener('click', () => activeWorkspace().undo(false));
+  btnRedo.addEventListener('click', () => activeWorkspace().undo(true));
+  btnTidy.addEventListener('click', () => {
+    const ws = activeWorkspace();
+    ws.cleanUp();
+    ws.zoomToFit();
+  });
+
+  window.addEventListener('resize', () => { Blockly.svgResize(activeWorkspace()); layout(); if (plotting) drawPlot(); });
 
   // ---- Draggable splitter between workspace and code panel ----
   let dragging = false;
@@ -402,6 +488,9 @@ window.addEventListener('load', () => {
     btnVerify.disabled = true;
     btnUpload.disabled = true;
     clearMarkers();
+    // The serial monitor holds the port open, which blocks uploading. Free it, then reopen.
+    const wasMonitoring = serialConnected;
+    if (wasMonitoring) await disconnectSerial();
     const fqbn = selectedFqbn();
     showConsole('Uploading…', 'busy', `Compiling and uploading to ${board.address} (${fqbn || 'arduino:avr:uno'})…`);
     try {
@@ -411,12 +500,175 @@ window.addEventListener('load', () => {
       busy = false;
       btnVerify.disabled = false;
       btnUpload.disabled = false;
+      if (wasMonitoring) await connectSerial();   // resume watching after upload
     }
   }
 
   btnVerify.addEventListener('click', verify);
   btnUpload.addEventListener('click', upload);
   btnConsoleClose.addEventListener('click', hideConsole);
+
+  // ---- Serial Monitor (streams a board's serial output via arduino-cli monitor) ----
+  let serialConnected = false;
+
+  function setSerialStatus(text: string, cls: string): void {
+    serialStatus.textContent = text;
+    serialStatus.className = cls;
+  }
+
+  function showSerialPanel(): void {
+    serialPanel.classList.add('visible');
+    Blockly.svgResize(workspace);
+    layout();
+  }
+  function hideSerialPanel(): void {
+    serialPanel.classList.remove('visible');
+    Blockly.svgResize(workspace);
+    layout();
+  }
+
+  async function connectSerial(): Promise<void> {
+    const board = selectedBoard();
+    if (!board) { setSerialStatus('No board selected — click ⟳ to rescan', 'off'); return; }
+    const baud = parseInt(serialBaud.value, 10);
+    setSerialStatus(`Connecting to ${board.address}…`, 'busy');
+    const res = await window.electronAPI.serialMonitorStart(board.address, baud);
+    if (res.success) {
+      serialConnected = true;
+      btnSerialToggle.textContent = 'Disconnect';
+      btnSerialToggle.classList.add('connected');
+      serialBaud.disabled = true;
+      setSerialStatus(`Connected · ${board.address} · ${baud} baud`, 'ok');
+    } else {
+      setSerialStatus(res.error || 'Failed to open serial port', 'off');
+    }
+  }
+
+  async function disconnectSerial(): Promise<void> {
+    await window.electronAPI.serialMonitorStop();
+    serialConnected = false;
+    btnSerialToggle.textContent = 'Connect';
+    btnSerialToggle.classList.remove('connected');
+    serialBaud.disabled = false;
+    setSerialStatus('Disconnected', 'off');
+  }
+
+  function appendSerial(text: string): void {
+    // Keep pinned to the bottom only if the user is already near it.
+    const atBottom = serialOutput.scrollHeight - serialOutput.scrollTop - serialOutput.clientHeight < 30;
+    serialOutput.textContent += text;
+    if (serialOutput.textContent!.length > 200000) {
+      serialOutput.textContent = serialOutput.textContent!.slice(-150000);   // cap the buffer
+    }
+    if (atBottom) serialOutput.scrollTop = serialOutput.scrollHeight;
+  }
+
+  // ---- Serial Plotter (numeric values from the same stream, drawn as a live chart) ----
+  let plotting = false;
+  let plotBuffer = '';                          // accumulates partial lines between chunks
+  const PLOT_MAX_POINTS = 400;
+  const PLOT_COLORS = ['#4ec9b0', '#dcdcaa', '#9cdcfe', '#ce9178', '#c586c0', '#569cd6'];
+  let plotSeries: number[][] = [];              // plotSeries[channel] = rolling values
+
+  function feedPlot(text: string): void {
+    plotBuffer += text;
+    const lines = plotBuffer.split('\n');
+    plotBuffer = lines.pop() ?? '';
+    for (const line of lines) {
+      const nums = line.trim().split(/[\s,]+/).map(Number).filter(n => Number.isFinite(n));
+      if (nums.length === 0) continue;
+      nums.forEach((n, i) => {
+        (plotSeries[i] ??= []).push(n);
+        if (plotSeries[i].length > PLOT_MAX_POINTS) plotSeries[i].shift();
+      });
+    }
+    drawPlot();
+  }
+
+  function drawPlot(): void {
+    const w = serialPlot.clientWidth, h = serialPlot.clientHeight;
+    if (w === 0 || h === 0) return;
+    const dpr = window.devicePixelRatio || 1;
+    serialPlot.width = Math.round(w * dpr);
+    serialPlot.height = Math.round(h * dpr);
+    const ctx = serialPlot.getContext('2d')!;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    let min = Infinity, max = -Infinity;
+    for (const s of plotSeries) for (const v of s) { if (v < min) min = v; if (v > max) max = v; }
+    if (!isFinite(min)) return;
+    if (min === max) { min -= 1; max += 1; }
+    const pad = 8;
+    const yOf = (v: number) => h - pad - ((v - min) / (max - min)) * (h - 2 * pad);
+
+    ctx.strokeStyle = '#2a2a2a';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad, yOf(min)); ctx.lineTo(w - pad, yOf(min)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pad, yOf(max)); ctx.lineTo(w - pad, yOf(max)); ctx.stroke();
+
+    plotSeries.forEach((s, si) => {
+      if (s.length < 2) return;
+      ctx.strokeStyle = PLOT_COLORS[si % PLOT_COLORS.length];
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      s.forEach((v, i) => {
+        const x = pad + (i / (s.length - 1)) * (w - 2 * pad);
+        const y = yOf(v);
+        if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+      });
+      ctx.stroke();
+    });
+
+    ctx.fillStyle = '#7d7d7d';
+    ctx.font = '10px monospace';
+    ctx.fillText(String(Math.round(max * 100) / 100), 4, 11);
+    ctx.fillText(String(Math.round(min * 100) / 100), 4, h - 4);
+  }
+
+  function togglePlot(): void {
+    plotting = !plotting;
+    btnSerialPlot.classList.toggle('active', plotting);
+    serialPlot.classList.toggle('hidden', !plotting);
+    serialOutput.classList.toggle('hidden', plotting);
+    if (plotting) { plotSeries = []; plotBuffer = ''; drawPlot(); }
+  }
+  btnSerialPlot.addEventListener('click', togglePlot);
+
+  window.electronAPI.onSerialData((text) => {
+    appendSerial(text);
+    if (plotting) feedPlot(text);
+  });
+  window.electronAPI.onSerialClosed((message) => {
+    if (!serialConnected) return;
+    serialConnected = false;
+    btnSerialToggle.textContent = 'Connect';
+    btnSerialToggle.classList.remove('connected');
+    serialBaud.disabled = false;
+    setSerialStatus(message || 'Disconnected', 'off');
+  });
+
+  function openSerialMonitor(): void {
+    if (activeTab !== 'arduino') setActiveTab('arduino');
+    showSerialPanel();
+    if (!serialConnected) void connectSerial();
+  }
+
+  function sendSerial(): void {
+    if (!serialConnected) return;
+    const text = serialInput.value;
+    const ending = serialEnding.value.replace(/\\r/g, '\r').replace(/\\n/g, '\n');
+    appendSerial('> ' + text + '\n');
+    void window.electronAPI.serialMonitorSend(text, ending);
+    serialInput.value = '';
+  }
+
+  btnSerial.addEventListener('click', openSerialMonitor);
+  btnSerialClose.addEventListener('click', hideSerialPanel);
+  btnSerialToggle.addEventListener('click', () => { if (serialConnected) void disconnectSerial(); else void connectSerial(); });
+  btnSerialClear.addEventListener('click', () => { serialOutput.textContent = ''; });
+  btnSerialSend.addEventListener('click', sendSerial);
+  serialInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendSerial(); });
 
   // ---- Getting Started overlay ----
   function showHelp(): void { helpOverlay.classList.add('visible'); }
@@ -621,10 +873,19 @@ window.addEventListener('load', () => {
   const doSave   = () => save(false);
   const doSaveAs = () => save(true);
 
+  // Drop an empty setup()/loop() pair into the canvas so a fresh sketch isn't blank.
+  function seedStarterBlocks(): void {
+    const setup = workspace.newBlock('arduino_setup') as Blockly.BlockSvg;
+    setup.initSvg(); setup.render(); setup.moveBy(40, 40);
+    const loop = workspace.newBlock('arduino_loop') as Blockly.BlockSvg;
+    loop.initSvg(); loop.render(); loop.moveBy(40, 220);
+  }
+
   async function fileNew(): Promise<void> {
     if (!await checkUnsaved()) return;
     isLoadingFromFile = true;
     workspace.clear();
+    seedStarterBlocks();
     isLoadingFromFile = false;
     manualEdit = false;
     setFilePath(null);
@@ -670,6 +931,13 @@ window.addEventListener('load', () => {
     generateCode();
   }
 
+  // Fresh start: seed an empty setup()/loop() so the canvas isn't blank on first launch.
+  isLoadingFromFile = true;
+  seedStarterBlocks();
+  isLoadingFromFile = false;
+  generateCode();
+  markDirty(false);
+
   window.electronAPI.onMenuCmd(async (cmd) => {
     if      (cmd === 'file-new')     await fileNew();
     else if (cmd === 'file-open')    await fileOpen();
@@ -677,6 +945,7 @@ window.addEventListener('load', () => {
     else if (cmd === 'file-save-as') await doSaveAs();
     else if (cmd === 'verify')       await verify();
     else if (cmd === 'upload')       await upload();
+    else if (cmd === 'serial-monitor') openSerialMonitor();
     else if (cmd === 'show-tutorial') showHelp();
     else if (cmd === 'import-blocks') importBlocks();
     else if (cmd === 'install-library') showLibOverlay();

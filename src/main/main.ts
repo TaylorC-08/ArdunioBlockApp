@@ -5,6 +5,7 @@ import { registerVerifyHandler } from './verifyHandler';
 import { registerBoardHandlers } from './boardHandler';
 import { registerRpiHandler } from './rpiDeployHandler';
 import { registerLibraryHandler } from './libraryHandler';
+import { registerSerialMonitorHandler } from './serialMonitorHandler';
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -22,6 +23,7 @@ function createWindow(): void {
   });
 
   registerFileHandlers(win);
+  registerSerialMonitorHandler(win);
 
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     {
@@ -40,6 +42,7 @@ function createWindow(): void {
       submenu: [
         { label: 'Verify', accelerator: 'CmdOrCtrl+R', click: () => win.webContents.send('menu-cmd', 'verify') },
         { label: 'Upload', accelerator: 'CmdOrCtrl+U', click: () => win.webContents.send('menu-cmd', 'upload') },
+        { label: 'Serial Monitor', accelerator: 'CmdOrCtrl+M', click: () => win.webContents.send('menu-cmd', 'serial-monitor') },
         { type: 'separator' },
         { label: 'Install Library…', click: () => win.webContents.send('menu-cmd', 'install-library') },
         { label: 'Blocks from Code', click: () => win.webContents.send('menu-cmd', 'import-blocks') },
