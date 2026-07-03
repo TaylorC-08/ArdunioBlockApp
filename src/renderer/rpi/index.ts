@@ -53,9 +53,13 @@ Blockly.defineBlocksWithJsonArray([
   },
 ]);
 
+// definitions_ is protected at the type level; go through the generator object each
+// time since the dict is replaced on every generator init.
+const pyDefs = pythonGenerator as unknown as { definitions_: Record<string, string> };
+
 // gpio init (import + BCM mode) emitted once via the generator's definitions.
 function ensureGpioInit(): void {
-  pythonGenerator.definitions_['gpio_init'] =
+  pyDefs.definitions_['gpio_init'] =
     'import RPi.GPIO as GPIO\nGPIO.setmode(GPIO.BCM)';
 }
 
@@ -80,7 +84,7 @@ pythonGenerator.forBlock['rpi_digital_read'] = function (block) {
 };
 
 pythonGenerator.forBlock['rpi_sleep'] = function (block, generator) {
-  pythonGenerator.definitions_['import_time'] = 'import time';
+  pyDefs.definitions_['import_time'] = 'import time';
   const seconds = generator.valueToCode(block, 'SECONDS', Order.NONE) || '1';
   return `time.sleep(${seconds})\n`;
 };

@@ -1,0 +1,15 @@
+{
+  // Typechecking only — the renderer is bundled by esbuild, which does not check types.
+  // The IDE picks this up automatically; run manually with: npx tsc -p src/renderer
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2020", "DOM"],
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "include": ["./**/*"]
+}

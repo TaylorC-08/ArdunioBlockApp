@@ -6,7 +6,7 @@ arduinoGenerator.forBlock['text'] = function(block, generator) {
 
 arduinoGenerator.forBlock['text_print'] = function(block, generator) {
   // Ensure Serial.begin(9600) runs in setup()
-  generator.definitions_['setup_serial_begin'] = 'Serial.begin(9600);';
+  (generator as ArduinoGenerator).addDefinition('setup_serial_begin', 'Serial.begin(9600);');
   const msg = generator.valueToCode(block, 'TEXT', ArduinoGenerator.ORDER_NONE) || '""';
   return `Serial.println(${msg});\n`;
 };

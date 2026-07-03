@@ -50,12 +50,6 @@
       transition: background 0.15s;
     }
 
-    #btn-generate {
-      background: #0e7ac4;
-      color: #fff;
-    }
-    #btn-generate:hover { background: #1089d4; }
-
     #btn-clear, #btn-undo, #btn-redo, #btn-tidy {
       background: #3e3e3e;
       color: #d4d4d4;
@@ -217,7 +211,7 @@
       border-bottom: 1px solid #3e3e3e;
     }
 
-    #console-title {
+    .panel-title {
       font-size: 12px;
       font-weight: 600;
       text-transform: uppercase;
@@ -271,7 +265,7 @@
       padding: 6px 12px;
       border-bottom: 1px solid #3e3e3e;
     }
-    #serial-header #console-title { margin-right: auto; }
+    #serial-header .panel-title { margin-right: auto; }
 
     #serial-status { font-size: 12px; }
     #serial-status.ok   { color: #4ec94e; }
@@ -615,7 +609,7 @@
 
   <div id="console">
     <div id="console-header">
-      <span id="console-title">Output</span>
+      <span class="panel-title">Output</span>
       <span id="console-status"></span>
       <button id="btn-console-close" title="Close">×</button>
     </div>
@@ -624,7 +618,7 @@
 
   <div id="serial">
     <div id="serial-header">
-      <span id="console-title">Serial Monitor</span>
+      <span class="panel-title">Serial Monitor</span>
       <span id="serial-status"></span>
       <select id="serial-baud" title="Baud rate">
         <option value="300">300</option>

@@ -21,7 +21,7 @@ function defineProcedure(block: Blockly.Block, generator: ArduinoGenerator): str
     code += `  return ${ret};\n`;
   }
   code += '}';
-  generator.definitions_[`procedure_${name}`] = code;
+  generator.addDefinition(`procedure_${name}`, code);
   return '';
 }
 

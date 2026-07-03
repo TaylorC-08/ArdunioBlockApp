@@ -391,7 +391,7 @@ window.addEventListener('load', () => {
     outputPanel.style.pointerEvents = '';
   });
 
-  // ---- Verify (compile via arduino-cli) ----
+  // ---- Output console panel ----
   function showConsole(status: string, statusClass: string, output: string): void {
     consoleStatus.textContent = status;
     consoleStatus.className = statusClass;

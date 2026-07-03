@@ -9,6 +9,8 @@ export interface LibraryResult {
 
 export function registerLibraryHandler(): void {
   ipcMain.handle('search-library', (_e, query: string): Promise<string[]> => {
+    // A leading '-' would be parsed by arduino-cli as a flag, not a name.
+    if (typeof query !== 'string' || query.startsWith('-')) return Promise.resolve([]);
     const cli = resolveCli();
     return new Promise((resolve) => {
       execFile(cli, ['lib', 'search', query, '--format', 'json'], { maxBuffer: 20 * 1024 * 1024 }, (_error, stdout) => {
@@ -25,6 +27,9 @@ export function registerLibraryHandler(): void {
   });
 
   ipcMain.handle('install-library', (_e, name: string): Promise<LibraryResult> => {
+    if (typeof name !== 'string' || name.startsWith('-')) {
+      return Promise.resolve({ success: false, output: `Invalid library name "${name}".` });
+    }
     const cli = resolveCli();
     return new Promise((resolve) => {
       execFile(cli, ['lib', 'install', name], { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {

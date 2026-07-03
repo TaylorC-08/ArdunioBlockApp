@@ -112,6 +112,12 @@ export class ArduinoGenerator extends Blockly.CodeGenerator {
     return line + ';\n';
   }
 
+  // definitions_ is protected in Blockly's CodeGenerator; block generators outside
+  // this class register their globals (includes, setup statements, functions) here.
+  addDefinition(key: string, code: string): void {
+    this.definitions_[key] = code;
+  }
+
   quote_(str: string): string {
     return '"' + str
       .replace(/\\/g, '\\\\')

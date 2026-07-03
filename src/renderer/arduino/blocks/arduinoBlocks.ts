@@ -375,7 +375,7 @@ arduinoGenerator.forBlock['arduino_include'] = function(block, generator) {
   if (lib) {
     // Bracket form unless the user already wrote <...> or "..." themselves.
     const ref = /^[<"].*[>"]$/.test(lib) ? lib : `<${lib}>`;
-    generator.definitions_[`include_${lib}`] = `#include ${ref}`;
+    (generator as ArduinoGenerator).addDefinition(`include_${lib}`, `#include ${ref}`);
   }
   return '';
 };

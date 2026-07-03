@@ -22,8 +22,10 @@ function createWindow(): void {
     title: 'Arduino Block App',
   });
 
-  registerFileHandlers(win);
-  registerSerialMonitorHandler(win);
+  // The app is a single local page. Block window.open and all navigation (e.g. a
+  // file dragged onto the window) so no other content can load with the preload API.
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  win.webContents.on('will-navigate', (e) => e.preventDefault());
 
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     {
@@ -74,6 +76,8 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  registerFileHandlers();
+  registerSerialMonitorHandler();
   registerVerifyHandler();
   registerBoardHandlers();
   registerRpiHandler();
