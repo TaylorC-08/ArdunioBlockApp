@@ -1,7 +1,7 @@
 {
-  "name": "arduino-block-app",
-  "version": "0.1.0",
-  "description": "A visual block-based programming tool for Arduino using Blockly",
+  "name": "sketchblocks",
+  "version": "1.0.0",
+  "description": "SketchBlocks — visual block-based programming for Arduino boards using Blockly",
   "main": "dist/main/main.js",
   "scripts": {
     "build:main": "tsc",
@@ -9,35 +9,66 @@
     "build:worker": "esbuild node_modules/monaco-editor/esm/vs/editor/editor.worker.js --bundle --outfile=dist/renderer/editor.worker.js --platform=browser",
     "build:assets": "node scripts/copy-assets.js",
     "build": "npm run build:main && npm run build:renderer && npm run build:worker && npm run build:assets",
+    "typecheck": "tsc --noEmit -p src/renderer && tsc --noEmit",
     "start": "npm run build && electron .",
     "dev": "concurrently \"tsc --watch\" \"nodemon --watch dist/main/main.js --exec electron .\"",
-    "clean": "rimraf dist"
+    "dist": "npm run build && node scripts/gen-icon.js && electron-builder",
+    "clean": "rimraf dist release"
   },
   "keywords": [
     "arduino",
     "blockly",
     "electron"
   ],
-  "author": "",
+  "author": "Taylor Cunningham, William McNicholas",
   "license": "MIT",
   "devDependencies": {
+    "@electron/fuses": "^2.1.3",
     "@types/node": "^20.0.0",
     "@types/ssh2": "^1.15.5",
+    "blockly": "^11.0.0",
     "concurrently": "^8.0.0",
-    "electron": "^31.0.0",
+    "electron": "^43.0.0",
+    "electron-builder": "^26.15.3",
     "esbuild": "^0.21.0",
+    "monaco-editor": "^0.55.1",
     "nodemon": "^3.0.0",
     "rimraf": "^5.0.0",
     "typescript": "^5.4.0"
   },
   "dependencies": {
-    "blockly": "^11.0.0",
-    "monaco-editor": "^0.55.1",
+    "extract-zip": "^2.0.1",
     "ssh2": "^1.17.0"
   },
   "allowScripts": {
-    "electron@31.7.7": true,
+    "electron@43.0.0": true,
     "esbuild@0.21.5": true,
-    "ssh2@1.17.0": false
+    "ssh2@1.17.0": false,
+    "electron-winstaller@5.4.0": false
+  },
+  "build": {
+    "appId": "com.sketchblocks.app",
+    "productName": "SketchBlocks",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**",
+      "!dist/**/*.map",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "afterPack": "scripts/afterPack.js"
   }
 }

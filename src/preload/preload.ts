@@ -8,10 +8,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   fileOpen: (): Promise<{ content: string; filePath: string } | null> =>
     ipcRenderer.invoke('file-open'),
-  fileSave: (xml: string, code: string, filePath: string | null): Promise<string | null> =>
-    ipcRenderer.invoke('file-save', { xml, code, filePath }),
-  fileSaveAs: (xml: string, code: string): Promise<string | null> =>
-    ipcRenderer.invoke('file-save-as', { xml, code }),
+  fileSave: (xml: string, code: string, filePath: string | null, lang: 'python' | 'cpp'): Promise<string | null> =>
+    ipcRenderer.invoke('file-save', { xml, code, filePath, lang }),
+  fileSaveAs: (xml: string, code: string, lang: 'python' | 'cpp'): Promise<string | null> =>
+    ipcRenderer.invoke('file-save-as', { xml, code, lang }),
   dialogUnsaved: (): Promise<number> =>
     ipcRenderer.invoke('dialog-unsaved'),
   verifySketch: (code: string, fqbn?: string): Promise<VerifyResult> =>
@@ -20,8 +20,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('list-boards'),
   uploadSketch: (code: string, port: string, fqbn?: string): Promise<UploadResult> =>
     ipcRenderer.invoke('upload-sketch', code, port, fqbn),
-  rpiDeploy: (code: string, conn: RpiConnection): Promise<DeployResult> =>
-    ipcRenderer.invoke('rpi-deploy', code, conn),
+  rpiRunStart: (code: string, conn: RpiConnection): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('rpi-run-start', code, conn),
+  rpiRunStop: (): Promise<void> =>
+    ipcRenderer.invoke('rpi-run-stop'),
+  rpiPipInstall: (pkg: string, conn: RpiConnection): Promise<{ success: boolean; output: string }> =>
+    ipcRenderer.invoke('rpi-pip-install', pkg, conn),
+  onRpiOutput: (cb: (text: string) => void): void => {
+    ipcRenderer.on('rpi-run-output', (_event, text: string) => cb(text));
+  },
+  onRpiClosed: (cb: (message: string) => void): void => {
+    ipcRenderer.on('rpi-run-closed', (_event, message: string) => cb(message));
+  },
   searchLibrary: (query: string): Promise<string[]> =>
     ipcRenderer.invoke('search-library', query),
   installLibrary: (name: string): Promise<UploadResult> =>
@@ -38,6 +48,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onSerialClosed: (cb: (message: string) => void): void => {
     ipcRenderer.on('serial-closed', (_event, message: string) => cb(message));
   },
+  cliSetupRun: (): Promise<SetupResult> =>
+    ipcRenderer.invoke('cli-setup-run'),
+  onCliSetupProgress: (cb: (line: string) => void): void => {
+    ipcRenderer.on('cli-setup-progress', (_event, line: string) => cb(line));
+  },
+  notifyDirty: (dirty: boolean): void => {
+    ipcRenderer.send('dirty-changed', dirty);
+  },
+  confirmClose: (): void => {
+    ipcRenderer.send('close-confirmed');
+  },
 });
 
 interface RpiConnection {
@@ -45,11 +66,6 @@ interface RpiConnection {
   port: number;
   username: string;
   password: string;
-}
-
-interface DeployResult {
-  success: boolean;
-  output: string;
 }
 
 interface Diagnostic {
@@ -63,6 +79,13 @@ interface VerifyResult {
   success: boolean;
   diagnostics: Diagnostic[];
   rawOutput: string;
+  cliMissing?: boolean;
+  coreMissing?: boolean;
+}
+
+interface SetupResult {
+  success: boolean;
+  output: string;
 }
 
 interface BoardPort {
@@ -75,4 +98,6 @@ interface BoardPort {
 interface UploadResult {
   success: boolean;
   output: string;
+  cliMissing?: boolean;
+  coreMissing?: boolean;
 }

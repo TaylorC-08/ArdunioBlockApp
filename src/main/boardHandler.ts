@@ -4,6 +4,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { resolveCli, DEFAULT_FQBN } from './arduinoCli';
+import { detectCoreMissing } from './verifyHandler';
 
 const SKETCH_NAME = 'upload_sketch';
 
@@ -17,6 +18,8 @@ export interface BoardPort {
 export interface UploadResult {
   success: boolean;
   output: string;
+  cliMissing?: boolean;
+  coreMissing?: boolean;
 }
 
 export function registerBoardHandlers(): void {
@@ -48,7 +51,7 @@ export function registerBoardHandlers(): void {
 
   ipcMain.handle('upload-sketch', (_e, code: string, port: string, fqbn?: string): Promise<UploadResult> => {
     const cli = resolveCli();
-    const sketchDir = path.join(os.tmpdir(), 'arduino-block-app', SKETCH_NAME);
+    const sketchDir = path.join(os.tmpdir(), 'sketchblocks', SKETCH_NAME);
     fs.mkdirSync(sketchDir, { recursive: true });
     fs.writeFileSync(path.join(sketchDir, `${SKETCH_NAME}.ino`), code, 'utf-8');
 
@@ -61,13 +64,14 @@ export function registerBoardHandlers(): void {
         (error, stdout, stderr) => {
           const notFound = (error as NodeJS.ErrnoException | null)?.code === 'ENOENT';
           if (notFound) {
-            resolve({ success: false, output: 'arduino-cli not found. Install it and restart the app.' });
+            resolve({ success: false, output: 'arduino-cli not found.', cliMissing: true });
             return;
           }
           const output = [stdout, stderr].filter(Boolean).join('\n').trim();
           resolve({
             success: !error,
             output: output || (error ? 'Upload failed.' : 'Upload complete.'),
+            coreMissing: !!error && detectCoreMissing(output),
           });
         },
       );

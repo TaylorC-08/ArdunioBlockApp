@@ -1,12 +1,14 @@
 import * as Blockly from 'blockly';
 import { arduinoGenerator } from './arduino/index';
 import {
-  getCurrentFilePath, isDirty, setFilePath, markDirty,
-  serializeWorkspace, loadWorkspace, parseFileContent,
+  getCurrentFilePath, isDirty, setFilePath, markDirty, setActiveEnv, langForEnv,
+  serializeWorkspace, loadWorkspace, parseFileContent, Env,
 } from './fileManager';
 import { initMonaco, getContent, setContent, onUserEdit, layout, setMarkers, clearMarkers, setLanguage } from './monacoEditor';
 import { parseCodeToWorkspace } from './importer';
+import { parsePythonToWorkspace } from './rpi/importer';
 import { exampleCategories } from './examples/index';
+import { rpiExampleCategories } from './rpi/examples/index';
 import { rpiToolbox, pythonGenerator } from './rpi/index';
 
 const toolbox: Blockly.utils.toolbox.ToolboxDefinition = {
@@ -207,6 +209,7 @@ window.addEventListener('load', () => {
   const rpiActions     = document.getElementById('rpi-actions')     as HTMLElement;
   const btnRpiSettings = document.getElementById('btn-rpi-settings') as HTMLButtonElement;
   const btnRpiRun      = document.getElementById('btn-rpi-run')     as HTMLButtonElement;
+  const btnRpiStop     = document.getElementById('btn-rpi-stop')    as HTMLButtonElement;
   const rpiOverlay     = document.getElementById('rpi-overlay')     as HTMLElement;
   const btnRpiClose    = document.getElementById('btn-rpi-close')   as HTMLButtonElement;
   const btnRpiSave     = document.getElementById('btn-rpi-save')    as HTMLButtonElement;
@@ -221,9 +224,14 @@ window.addEventListener('load', () => {
   const libName        = document.getElementById('lib-name')        as HTMLInputElement;
   const libResults     = document.getElementById('lib-results')     as HTMLElement;
   const btnExamples    = document.getElementById('btn-examples')    as HTMLButtonElement;
+  const btnRpiExamples = document.getElementById('btn-rpi-examples') as HTMLButtonElement;
   const examplesOverlay = document.getElementById('examples-overlay') as HTMLElement;
   const btnExamplesClose = document.getElementById('btn-examples-close') as HTMLButtonElement;
   const examplesList   = document.getElementById('examples-list')   as HTMLElement;
+  const setupOverlay   = document.getElementById('setup-overlay')   as HTMLElement;
+  const btnSetupRun    = document.getElementById('btn-setup-run')   as HTMLButtonElement;
+  const btnSetupClose  = document.getElementById('btn-setup-close') as HTMLButtonElement;
+  const setupLog       = document.getElementById('setup-log')       as HTMLElement;
 
   initMonaco(monacoContainer);
 
@@ -263,6 +271,18 @@ window.addEventListener('load', () => {
     promptInput.focus();
     promptInput.select();
   });
+
+  // Same overlay, used by app code (e.g. the pip package prompt) since Electron has no window.prompt.
+  function textPrompt(message: string, def = ''): Promise<string | null> {
+    return new Promise((resolve) => {
+      promptCallback = resolve;
+      promptMessage.textContent = message;
+      promptInput.value = def;
+      promptOverlay.classList.add('visible');
+      promptInput.focus();
+      promptInput.select();
+    });
+  }
   btnPromptOk.addEventListener('click', () => closePrompt(promptInput.value));
   btnPromptCancel.addEventListener('click', () => closePrompt(null));
   promptInput.addEventListener('keydown', (e) => {
@@ -299,7 +319,7 @@ window.addEventListener('load', () => {
   function makeChangeListener(tab: string) {
     return (e: Blockly.Events.Abstract): void => {
       if (activeTab === tab) debouncedGenerateCode();
-      if (!isLoadingFromFile && !e.isUiEvent) markDirty(true);
+      if (!isLoadingFromFile && !e.isUiEvent) markDirty(true, tab as Env);
     };
   }
   workspace.addChangeListener(makeChangeListener('arduino'));
@@ -308,6 +328,7 @@ window.addEventListener('load', () => {
   function setActiveTab(tab: string): void {
     if (tab === activeTab) return;
     activeTab = tab;
+    setActiveEnv(tab as Env);   // title bar / Save / Open follow the active tab's document
     const rpi = tab === 'rpi';
     blocklyDiv.classList.toggle('hidden', rpi);
     blocklyDivRpi.classList.toggle('hidden', !rpi);
@@ -326,7 +347,7 @@ window.addEventListener('load', () => {
 
   onUserEdit(() => {
     manualEdit = true;
-    markDirty(true);
+    markDirty(true, activeTab as Env);
   });
 
   function syncFromBlocks(): void {
@@ -344,10 +365,7 @@ window.addEventListener('load', () => {
   }
 
   btnSync.addEventListener('click', syncFromBlocks);
-  btnImport.addEventListener('click', () => {
-    if (activeTab !== 'arduino') setActiveTab('arduino');   // blocks are generated into the Arduino workspace
-    importBlocks();
-  });
+  btnImport.addEventListener('click', () => importBlocks());   // imports into whichever tab is active
   btnClear.addEventListener('click', () => {
     activeWorkspace().clear();
     manualEdit = false;
@@ -407,6 +425,16 @@ window.addEventListener('load', () => {
     layout();
   }
 
+  // Streaming variants for long-running output (e.g. a Pi program's console).
+  function setConsoleStatus(status: string, statusClass: string): void {
+    consoleStatus.textContent = status;
+    consoleStatus.className = statusClass;
+  }
+  function appendConsole(text: string): void {
+    consoleOutput.textContent += text;
+    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+  }
+
   // ---- Board selection ----
   let boards: BoardPort[] = [];
 
@@ -428,9 +456,11 @@ window.addEventListener('load', () => {
       opt.textContent = 'No boards detected';
       boardSelect.appendChild(opt);
       boardSelect.disabled = true;
+      boardSelect.title = 'Plug in a board and click ⟳ to rescan. Clone boards may need the CH340/CP210x USB driver installed.';
       return;
     }
     boardSelect.disabled = false;
+    boardSelect.title = 'Connected boards';
     for (const b of boards) {
       const opt = document.createElement('option');
       const label = b.name ? `${b.name} (${b.address})` : `Unknown board (${b.address})`;
@@ -455,6 +485,7 @@ window.addEventListener('load', () => {
     const fqbn = selectedFqbn();
     showConsole('Compiling…', 'busy', `Compiling sketch with arduino-cli (${fqbn || 'arduino:avr:uno'})…`);
     let missingLib: string | null = null;
+    let needsSetup = false;
     try {
       const result = await window.electronAPI.verifySketch(getContent(), fqbn);
       setMarkers(result.diagnostics);
@@ -464,6 +495,7 @@ window.addEventListener('load', () => {
       } else {
         const errors = result.diagnostics.filter(d => d.severity === 'error').length;
         showConsole(errors ? `Failed — ${errors} error(s)` : 'Compilation failed', 'error', result.rawOutput);
+        needsSetup = !!(result.cliMissing || result.coreMissing);
         const m = result.rawOutput.match(/([A-Za-z0-9_]+)\.h: No such file or directory/);
         if (m) missingLib = m[1];
       }
@@ -472,6 +504,8 @@ window.addEventListener('load', () => {
       btnVerify.disabled = false;
       btnUpload.disabled = false;
     }
+    // Tools not installed? Offer the guided setup, then re-verify.
+    if (needsSetup) { showSetupOverlay(true); return; }
     // Missing library? Open the search overlay pre-filled so the user can pick the
     // right library (header name often differs from library name), then re-verify.
     if (missingLib) showLibOverlay(missingLib, true);
@@ -494,15 +528,18 @@ window.addEventListener('load', () => {
     if (wasMonitoring) await disconnectSerial();
     const fqbn = selectedFqbn();
     showConsole('Uploading…', 'busy', `Compiling and uploading to ${board.address} (${fqbn || 'arduino:avr:uno'})…`);
+    let needsSetup = false;
     try {
       const result = await window.electronAPI.uploadSketch(getContent(), board.address, fqbn);
       showConsole(result.success ? 'Upload complete' : 'Upload failed', result.success ? 'ok' : 'error', result.output);
+      needsSetup = !result.success && !!(result.cliMissing || result.coreMissing);
     } finally {
       busy = false;
       btnVerify.disabled = false;
       btnUpload.disabled = false;
       if (wasMonitoring) await connectSerial();   // resume watching after upload
     }
+    if (needsSetup) showSetupOverlay(true);
   }
 
   btnVerify.addEventListener('click', verify);
@@ -703,21 +740,65 @@ window.addEventListener('load', () => {
     hideRpiSettings();
   });
 
+  // Streams a Pi program's output live and can stop it (Stop sends Ctrl-C over the
+  // SSH PTY, so the program's KeyboardInterrupt handler runs GPIO.cleanup()).
+  let rpiRunning = false;       // a program is running (Stop applies)
+  let piOutputActive = false;   // a Pi operation (run or pip) is streaming to the console
+
+  function setRpiRunningUI(running: boolean): void {
+    rpiRunning = running;
+    btnRpiRun.disabled = running;
+    btnRpiStop.disabled = !running;
+  }
+
   async function runOnPi(): Promise<void> {
-    if (busy) return;
+    if (rpiRunning) return;
     if (!rpiConn.host || !rpiConn.username) { showRpiSettings(); return; }
-    busy = true;
-    btnRpiRun.disabled = true;
-    showConsole('Running…', 'busy', `Connecting to ${rpiConn.username}@${rpiConn.host}…`);
-    try {
-      const result = await window.electronAPI.rpiDeploy(getContent(), rpiConn);
-      showConsole(result.success ? 'Run complete' : 'Run failed', result.success ? 'ok' : 'error', result.output);
-    } finally {
-      busy = false;
-      btnRpiRun.disabled = false;
+    setRpiRunningUI(true);
+    piOutputActive = true;
+    showConsole('Running…', 'busy', `Connecting to ${rpiConn.username}@${rpiConn.host}…\n`);
+    const res = await window.electronAPI.rpiRunStart(getContent(), rpiConn);
+    if (!res.success) {
+      setRpiRunningUI(false);
+      piOutputActive = false;
+      setConsoleStatus('Run failed', 'error');
+      appendConsole((res.error || 'Could not start the program.') + '\n');
+    } else {
+      setConsoleStatus('Running…', 'busy');
+      appendConsole('Connected — program output below:\n\n');
     }
   }
+
+  function stopOnPi(): void {
+    if (!rpiRunning) return;
+    setConsoleStatus('Stopping…', 'busy');
+    void window.electronAPI.rpiRunStop();
+  }
+
+  async function installPipPackage(): Promise<void> {
+    if (activeTab !== 'rpi') setActiveTab('rpi');
+    if (!rpiConn.host || !rpiConn.username) { showRpiSettings(); return; }
+    const pkg = (await textPrompt('Install a Python package on the Pi (pip):', ''))?.trim();
+    if (!pkg) return;
+    showConsole('Installing…', 'busy', `Installing "${pkg}" on ${rpiConn.host}…\n\n`);
+    piOutputActive = true;
+    const res = await window.electronAPI.rpiPipInstall(pkg, rpiConn);
+    piOutputActive = false;
+    setConsoleStatus(res.success ? 'Package installed' : 'Install failed', res.success ? 'ok' : 'error');
+    if (!res.success) appendConsole('\n' + res.output + '\n');
+  }
+
+  window.electronAPI.onRpiOutput((text) => { if (piOutputActive) appendConsole(text); });
+  window.electronAPI.onRpiClosed((message) => {
+    if (!rpiRunning) return;
+    setRpiRunningUI(false);
+    piOutputActive = false;
+    if (message) appendConsole(message + '\n');
+    setConsoleStatus('Run finished', 'ok');
+  });
+
   btnRpiRun.addEventListener('click', runOnPi);
+  btnRpiStop.addEventListener('click', stopOnPi);
 
   // ---- Library search & install (arduino-cli lib search / install) ----
   // When the overlay is opened from a failed Verify, install should re-verify.
@@ -773,12 +854,60 @@ window.addEventListener('load', () => {
   });
   libName.addEventListener('keydown', (e) => { if (e.key === 'Enter') void runLibSearch(); });
 
-  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { hideHelp(); hideRpiSettings(); hideLibOverlay(); hideExamples(); } });
+  // ---- Guided Arduino tools setup (downloads arduino-cli + AVR core via main) ----
+  let reverifyAfterSetup = false;
+  let setupRunning = false;
+
+  function showSetupOverlay(reverify: boolean): void {
+    reverifyAfterSetup = reverify;
+    if (!setupRunning) {
+      setupLog.textContent = '';
+      setupLog.classList.add('hidden');
+    }
+    setupOverlay.classList.add('visible');
+  }
+  function hideSetupOverlay(): void {
+    if (!setupRunning) setupOverlay.classList.remove('visible');   // not closable mid-install
+  }
+
+  window.electronAPI.onCliSetupProgress((line) => {
+    setupLog.classList.remove('hidden');
+    setupLog.textContent += line + '\n';
+    setupLog.scrollTop = setupLog.scrollHeight;
+  });
+
+  btnSetupRun.addEventListener('click', async () => {
+    if (setupRunning) return;
+    setupRunning = true;
+    btnSetupRun.disabled = true;
+    btnSetupRun.textContent = 'Installing…';
+    const result = await window.electronAPI.cliSetupRun();
+    setupRunning = false;
+    btnSetupRun.disabled = false;
+    btnSetupRun.textContent = 'Download & Install';
+    if (result.success) {
+      setupOverlay.classList.remove('visible');
+      showConsole('Arduino tools ready', 'ok', result.output);
+      await refreshBoards();
+      if (reverifyAfterSetup) { reverifyAfterSetup = false; await verify(); }
+    } else {
+      setupLog.classList.remove('hidden');
+      setupLog.textContent += '\nSetup failed: ' + result.output + '\n';
+      setupLog.scrollTop = setupLog.scrollHeight;
+    }
+  });
+
+  btnSetupClose.addEventListener('click', hideSetupOverlay);
+  setupOverlay.addEventListener('click', (e) => { if (e.target === setupOverlay) hideSetupOverlay(); });
+
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { hideHelp(); hideRpiSettings(); hideLibOverlay(); hideExamples(); hideSetupOverlay(); } });
 
   // ---- Import: generate blocks from the editor's code (constrained subset) ----
   function importBlocks(): void {
     isLoadingFromFile = true;
-    const result = parseCodeToWorkspace(workspace, getContent());
+    const result = activeTab === 'rpi'
+      ? parsePythonToWorkspace(rpiWorkspace, getContent())
+      : parseCodeToWorkspace(workspace, getContent());
     isLoadingFromFile = false;
     manualEdit = true; // keep the editor's code as-is; blocks are an aid
     if (result.imported === 0) {
@@ -794,18 +923,20 @@ window.addEventListener('load', () => {
     }
   }
 
-  // ---- Examples: load a bundled Arduino sketch and generate blocks from it ----
+  // ---- Examples: load a bundled program (Arduino sketch or Pi script) and generate blocks ----
   async function loadExample(code: string): Promise<void> {
     hideExamples();
     if (!await checkUnsaved()) return;
-    if (activeTab !== 'arduino') setActiveTab('arduino');
+    const env = activeTab as Env;
     isLoadingFromFile = true;
     setContent(code);                 // editor keeps the example verbatim, comments and all
-    const result = parseCodeToWorkspace(workspace, code);
+    const result = env === 'rpi'
+      ? parsePythonToWorkspace(rpiWorkspace, code)
+      : parseCodeToWorkspace(workspace, code);
     isLoadingFromFile = false;
     manualEdit = true;                // blocks are an aid; the loaded code stays authoritative
-    setFilePath(null);
-    markDirty(true);
+    setFilePath(null, env);
+    markDirty(true, env);
     if (result.imported === 0) {
       showConsole('Loaded as code', 'busy',
         'Loaded the example into the editor. No blocks could be generated from it; edit it as code.');
@@ -819,9 +950,13 @@ window.addEventListener('load', () => {
     }
   }
 
+  // The picker shows the active environment's examples; rebuild when the tab changes.
+  let examplesBuiltFor: string | null = null;
   function showExamples(): void {
-    if (examplesList.childElementCount === 0) {
-      for (const cat of exampleCategories) {
+    if (examplesBuiltFor !== activeTab) {
+      examplesList.innerHTML = '';
+      const cats = activeTab === 'rpi' ? rpiExampleCategories : exampleCategories;
+      for (const cat of cats) {
         const h = document.createElement('h3');
         h.textContent = cat.name;
         examplesList.appendChild(h);
@@ -838,12 +973,14 @@ window.addEventListener('load', () => {
           examplesList.appendChild(b);
         }
       }
+      examplesBuiltFor = activeTab;
     }
     examplesOverlay.classList.add('visible');
   }
   function hideExamples(): void { examplesOverlay.classList.remove('visible'); }
 
   btnExamples.addEventListener('click', showExamples);
+  btnRpiExamples.addEventListener('click', showExamples);
   btnExamplesClose.addEventListener('click', hideExamples);
   examplesOverlay.addEventListener('click', (e) => { if (e.target === examplesOverlay) hideExamples(); });
 
@@ -858,39 +995,48 @@ window.addEventListener('load', () => {
   }
 
   // XML embedded only when blocks exist; external/blockless files save as plain code.
+  // Saves whichever environment (Arduino sketch / Pi script) is active.
   async function save(saveAs: boolean): Promise<boolean> {
-    const hasBlocks = workspace.getTopBlocks(false).length > 0;
-    const xml  = hasBlocks ? serializeWorkspace(workspace) : '';
+    const env = activeTab as Env;
+    const ws = activeWorkspace();
+    const hasBlocks = ws.getTopBlocks(false).length > 0;
+    const xml  = hasBlocks ? serializeWorkspace(ws) : '';
     const code = getContent();
+    const lang = langForEnv(env);
     const savedPath = saveAs
-      ? await window.electronAPI.fileSaveAs(xml, code)
-      : await window.electronAPI.fileSave(xml, code, getCurrentFilePath());
+      ? await window.electronAPI.fileSaveAs(xml, code, lang)
+      : await window.electronAPI.fileSave(xml, code, getCurrentFilePath(), lang);
     if (!savedPath) return false;
-    setFilePath(savedPath);
-    markDirty(false);
+    setFilePath(savedPath, env);
+    markDirty(false, env);
     return true;
   }
 
   const doSave   = () => save(false);
   const doSaveAs = () => save(true);
 
-  // Drop an empty setup()/loop() pair into the canvas so a fresh sketch isn't blank.
-  function seedStarterBlocks(): void {
-    const setup = workspace.newBlock('arduino_setup') as Blockly.BlockSvg;
-    setup.initSvg(); setup.render(); setup.moveBy(40, 40);
-    const loop = workspace.newBlock('arduino_loop') as Blockly.BlockSvg;
-    loop.initSvg(); loop.render(); loop.moveBy(40, 220);
+  // Drop an empty starter pair into a canvas so a fresh project isn't blank:
+  // setup()/loop() for Arduino, on-start/repeat-forever for the Pi.
+  function seedStarterBlocks(env: Env): void {
+    const ws = env === 'rpi' ? rpiWorkspace : workspace;
+    const [first, second] = env === 'rpi' ? ['rpi_setup', 'rpi_loop'] : ['arduino_setup', 'arduino_loop'];
+    const a = ws.newBlock(first) as Blockly.BlockSvg;
+    a.initSvg(); a.render(); a.moveBy(40, 40);
+    const b = ws.newBlock(second) as Blockly.BlockSvg;
+    b.initSvg(); b.render(); b.moveBy(40, 220);
   }
 
   async function fileNew(): Promise<void> {
     if (!await checkUnsaved()) return;
+    const env = activeTab as Env;
+    const ws = activeWorkspace();
     isLoadingFromFile = true;
-    workspace.clear();
-    seedStarterBlocks();
+    ws.clear();
+    seedStarterBlocks(env);
     isLoadingFromFile = false;
     manualEdit = false;
-    setFilePath(null);
-    markDirty(false);
+    setFilePath(null, env);
+    markDirty(false, env);
     generateCode();
   }
 
@@ -898,28 +1044,32 @@ window.addEventListener('load', () => {
     if (!await checkUnsaved()) return;
     const result = await window.electronAPI.fileOpen();
     if (!result) return;
+    // The file's extension selects the environment; switch tabs to match.
+    const env: Env = /\.py$/i.test(result.filePath) ? 'rpi' : 'arduino';
+    if (activeTab !== env) setActiveTab(env);
+    const ws = activeWorkspace();
     const { xml, code } = parseFileContent(result.content);
 
     if (xml === null) {
       // External file — no blocks to restore; show its code for editing.
       isLoadingFromFile = true;
-      workspace.clear();
+      ws.clear();
       isLoadingFromFile = false;
       manualEdit = true;
       setContent(code);
-      setFilePath(result.filePath);
-      markDirty(false);
+      setFilePath(result.filePath, env);
+      markDirty(false, env);
       // Offer to reconstruct blocks from the recognized subset of the code.
       if (confirm('This file has no saved blocks. Try to generate blocks from the code?\n\nUnsupported lines stay as code only.')) {
         importBlocks();
-        markDirty(false);
+        markDirty(false, env);
       }
       return;
     }
 
     try {
       isLoadingFromFile = true;
-      loadWorkspace(workspace, xml);
+      loadWorkspace(ws, xml);
     } catch (err) {
       alert(`Failed to load workspace: ${err}`);
       return;
@@ -927,17 +1077,19 @@ window.addEventListener('load', () => {
       isLoadingFromFile = false;
     }
     manualEdit = false;
-    setFilePath(result.filePath);
-    markDirty(false);
+    setFilePath(result.filePath, env);
+    markDirty(false, env);
     generateCode();
   }
 
-  // Fresh start: seed an empty setup()/loop() so the canvas isn't blank on first launch.
+  // Fresh start: seed starter blocks in both environments so neither canvas is blank.
   isLoadingFromFile = true;
-  seedStarterBlocks();
+  seedStarterBlocks('arduino');
+  seedStarterBlocks('rpi');
   isLoadingFromFile = false;
   generateCode();
-  markDirty(false);
+  markDirty(false, 'arduino');
+  markDirty(false, 'rpi');
 
   window.electronAPI.onMenuCmd(async (cmd) => {
     if      (cmd === 'file-new')     await fileNew();
@@ -951,5 +1103,17 @@ window.addEventListener('load', () => {
     else if (cmd === 'import-blocks') importBlocks();
     else if (cmd === 'install-library') showLibOverlay();
     else if (cmd === 'show-examples') showExamples();
+    else if (cmd === 'cli-setup')    showSetupOverlay(false);
+    else if (cmd === 'rpi-pip')      await installPipPackage();
+    else if (cmd === 'confirm-close') {
+      // Prompt for each environment that has unsaved work before letting the window close.
+      for (const env of ['arduino', 'rpi'] as Env[]) {
+        if (isDirty(env)) {
+          if (activeTab !== env) setActiveTab(env);
+          if (!await checkUnsaved()) return;   // user cancelled
+        }
+      }
+      window.electronAPI.confirmClose();
+    }
   });
 });

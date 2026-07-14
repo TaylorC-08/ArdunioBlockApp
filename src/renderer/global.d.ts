@@ -9,6 +9,13 @@ interface VerifyResult {
   success: boolean;
   diagnostics: Diagnostic[];
   rawOutput: string;
+  cliMissing?: boolean;
+  coreMissing?: boolean;
+}
+
+interface SetupResult {
+  success: boolean;
+  output: string;
 }
 
 interface BoardPort {
@@ -21,6 +28,8 @@ interface BoardPort {
 interface UploadResult {
   success: boolean;
   output: string;
+  cliMissing?: boolean;
+  coreMissing?: boolean;
 }
 
 interface RpiConnection {
@@ -30,22 +39,21 @@ interface RpiConnection {
   password: string;
 }
 
-interface DeployResult {
-  success: boolean;
-  output: string;
-}
-
 interface ElectronAPI {
   getAppVersion: () => Promise<string>;
   onMenuCmd: (cb: (cmd: string) => void) => void;
   fileOpen: () => Promise<{ content: string; filePath: string } | null>;
-  fileSave: (xml: string, code: string, filePath: string | null) => Promise<string | null>;
-  fileSaveAs: (xml: string, code: string) => Promise<string | null>;
+  fileSave: (xml: string, code: string, filePath: string | null, lang: 'python' | 'cpp') => Promise<string | null>;
+  fileSaveAs: (xml: string, code: string, lang: 'python' | 'cpp') => Promise<string | null>;
   dialogUnsaved: () => Promise<number>;
   verifySketch: (code: string, fqbn?: string) => Promise<VerifyResult>;
   listBoards: () => Promise<BoardPort[]>;
   uploadSketch: (code: string, port: string, fqbn?: string) => Promise<UploadResult>;
-  rpiDeploy: (code: string, conn: RpiConnection) => Promise<DeployResult>;
+  rpiRunStart: (code: string, conn: RpiConnection) => Promise<{ success: boolean; error?: string }>;
+  rpiRunStop: () => Promise<void>;
+  rpiPipInstall: (pkg: string, conn: RpiConnection) => Promise<{ success: boolean; output: string }>;
+  onRpiOutput: (cb: (text: string) => void) => void;
+  onRpiClosed: (cb: (message: string) => void) => void;
   searchLibrary: (query: string) => Promise<string[]>;
   installLibrary: (name: string) => Promise<UploadResult>;
   serialMonitorStart: (port: string, baud: number) => Promise<{ success: boolean; error?: string }>;
@@ -53,6 +61,10 @@ interface ElectronAPI {
   serialMonitorStop: () => Promise<void>;
   onSerialData: (cb: (text: string) => void) => void;
   onSerialClosed: (cb: (message: string) => void) => void;
+  cliSetupRun: () => Promise<SetupResult>;
+  onCliSetupProgress: (cb: (line: string) => void) => void;
+  notifyDirty: (dirty: boolean) => void;
+  confirmClose: () => void;
 }
 
 declare interface Window {

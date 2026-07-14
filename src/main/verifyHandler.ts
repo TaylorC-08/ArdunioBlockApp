@@ -18,6 +18,13 @@ export interface VerifyResult {
   success: boolean;
   diagnostics: Diagnostic[];
   rawOutput: string;
+  cliMissing?: boolean;    // arduino-cli itself was not found
+  coreMissing?: boolean;   // the board platform (e.g. arduino:avr) is not installed
+}
+
+// arduino-cli phrasing when the board platform isn't installed.
+export function detectCoreMissing(text: string): boolean {
+  return /platform[^\n]*not (installed|found)/i.test(text);
 }
 
 function parseDiagnostics(compilerErr: string): Diagnostic[] {
@@ -51,7 +58,7 @@ function cleanOutput(text: string, sketchDir: string): string {
 export function registerVerifyHandler(): void {
   ipcMain.handle('verify-sketch', (_e, code: string, fqbn?: string): Promise<VerifyResult> => {
     const cli = resolveCli();
-    const sketchDir = path.join(os.tmpdir(), 'arduino-block-app', SKETCH_NAME);
+    const sketchDir = path.join(os.tmpdir(), 'sketchblocks', SKETCH_NAME);
     fs.mkdirSync(sketchDir, { recursive: true });
     fs.writeFileSync(path.join(sketchDir, `${SKETCH_NAME}.ino`), code, 'utf-8');
 
@@ -72,8 +79,10 @@ export function registerVerifyHandler(): void {
               success: false,
               diagnostics: [],
               rawOutput: notFound
-                ? 'arduino-cli not found. Install it and restart the app.'
+                ? 'arduino-cli not found.'
                 : (stderr || error?.message || 'Verification failed to run.'),
+              cliMissing: notFound,
+              coreMissing: detectCoreMissing(stdout + stderr),
             });
             return;
           }
@@ -83,7 +92,9 @@ export function registerVerifyHandler(): void {
             diagnostics: parseDiagnostics(compilerErr),
             rawOutput:
               cleanOutput(compilerErr, sketchDir) ||
+              cleanOutput(stderr, sketchDir) ||
               (success ? 'Done compiling. No errors.' : 'Compilation failed.'),
+            coreMissing: !success && detectCoreMissing(stdout + stderr),
           });
         },
       );

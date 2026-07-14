@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, dialog, session } from 'electron';
 import path from 'path';
 import { registerFileHandlers } from './fileHandlers';
 import { registerVerifyHandler } from './verifyHandler';
@@ -6,6 +6,11 @@ import { registerBoardHandlers } from './boardHandler';
 import { registerRpiHandler } from './rpiDeployHandler';
 import { registerLibraryHandler } from './libraryHandler';
 import { registerSerialMonitorHandler } from './serialMonitorHandler';
+import { registerCliSetupHandler } from './cliSetup';
+
+let mainWin: BrowserWindow | null = null;
+// Mirrors the renderer's unsaved-changes flag (kept current via 'dirty-changed').
+let rendererDirty = false;
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -19,13 +24,23 @@ function createWindow(): void {
       contextIsolation: true,
       nodeIntegration: false,
     },
-    title: 'Arduino Block App',
+    title: 'SketchBlocks',
   });
+  mainWin = win;
+  win.on('closed', () => { if (mainWin === win) mainWin = null; });
 
   // The app is a single local page. Block window.open and all navigation (e.g. a
   // file dragged onto the window) so no other content can load with the preload API.
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', (e) => e.preventDefault());
+
+  // Closing with unsaved changes: hand off to the renderer, which runs the
+  // Save / Don't Save / Cancel flow and calls close-confirmed to proceed.
+  win.on('close', (e) => {
+    if (!rendererDirty) return;
+    e.preventDefault();
+    win.webContents.send('menu-cmd', 'confirm-close');
+  });
 
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     {
@@ -48,6 +63,8 @@ function createWindow(): void {
         { type: 'separator' },
         { label: 'Install Library…', click: () => win.webContents.send('menu-cmd', 'install-library') },
         { label: 'Blocks from Code', click: () => win.webContents.send('menu-cmd', 'import-blocks') },
+        { label: 'Set Up Arduino Tools…', click: () => win.webContents.send('menu-cmd', 'cli-setup') },
+        { label: 'Install Python Package (Pi)…', click: () => win.webContents.send('menu-cmd', 'rpi-pip') },
       ],
     },
     {
@@ -59,9 +76,9 @@ function createWindow(): void {
           label: 'About',
           click: () => dialog.showMessageBox(win, {
             type: 'info',
-            title: 'About Arduino Block App',
-            message: 'Arduino Block App',
-            detail: `Version ${app.getVersion()}\n\nVisual block-based Arduino programming with live C++ generation, compile/verify, and board upload.`,
+            title: 'About SketchBlocks',
+            message: 'SketchBlocks',
+            detail: `Version ${app.getVersion()}\n\nVisual block-based programming for Arduino boards with live C++ generation, compile/verify, and board upload.`,
           }),
         },
       ],
@@ -75,21 +92,41 @@ function createWindow(): void {
   }
 }
 
-app.whenReady().then(() => {
-  registerFileHandlers();
-  registerSerialMonitorHandler();
-  registerVerifyHandler();
-  registerBoardHandlers();
-  registerRpiHandler();
-  registerLibraryHandler();
-  createWindow();
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
+// Single instance: a second launch focuses the running window instead of
+// competing with it for serial ports.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWin) {
+      if (mainWin.isMinimized()) mainWin.restore();
+      mainWin.focus();
     }
   });
-});
+
+  app.whenReady().then(() => {
+    // The app requests no web permissions (camera, USB, geolocation, …).
+    session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
+
+    registerFileHandlers();
+    registerSerialMonitorHandler();
+    registerVerifyHandler();
+    registerBoardHandlers();
+    registerRpiHandler();
+    registerLibraryHandler();
+    registerCliSetupHandler();
+    createWindow();
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow();
+      }
+    });
+  });
+}
+
+ipcMain.on('dirty-changed', (_e, dirty: boolean) => { rendererDirty = !!dirty; });
+ipcMain.on('close-confirmed', (e) => { BrowserWindow.fromWebContents(e.sender)?.destroy(); });
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {

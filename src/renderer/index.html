@@ -5,7 +5,7 @@
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; font-src 'self';" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Arduino Block App</title>
+  <title>SketchBlocks</title>
   <link rel="stylesheet" href="renderer.css" />
   <style>
     * {
@@ -115,6 +115,7 @@
     #rpi-actions button:hover { background: #4e4e4e; }
     #btn-rpi-run { background: #a6328c !important; color: #fff; }
     #btn-rpi-run:hover { background: #bb3b9e !important; }
+    #rpi-actions button:disabled { opacity: 0.5; cursor: default; }
 
     #workspace-container {
       display: flex;
@@ -420,7 +421,7 @@
     }
 
     /* Form overlays — Raspberry Pi connection & library install (reuse help-overlay layout) */
-    #rpi-overlay, #lib-overlay, #examples-overlay, #prompt-overlay {
+    #rpi-overlay, #lib-overlay, #examples-overlay, #prompt-overlay, #setup-overlay {
       position: fixed;
       inset: 0;
       background: rgba(0, 0, 0, 0.6);
@@ -429,7 +430,7 @@
       justify-content: center;
       z-index: 1000;
     }
-    #rpi-overlay.visible, #lib-overlay.visible, #examples-overlay.visible, #prompt-overlay.visible { display: flex; }
+    #rpi-overlay.visible, #lib-overlay.visible, #examples-overlay.visible, #prompt-overlay.visible, #setup-overlay.visible { display: flex; }
 
     /* Generic text prompt (Blockly variable create/rename — Electron has no window.prompt) */
     #prompt-overlay { z-index: 1100; }
@@ -464,25 +465,57 @@
     #btn-prompt-ok { background: #0e7ac4; color: #fff; }
     #btn-prompt-ok:hover { background: #1089d4; }
 
-    #rpi-panel, #lib-panel {
+    #rpi-panel, #lib-panel, #setup-panel {
       width: min(380px, 90vw);
       background: #252526;
       border: 1px solid #3e3e3e;
       border-radius: 8px;
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
     }
-    #rpi-header, #lib-header {
+    #setup-panel { width: min(460px, 90vw); }
+    #rpi-header, #lib-header, #setup-header {
       display: flex;
       align-items: center;
       padding: 12px 16px;
       border-bottom: 1px solid #3e3e3e;
     }
-    #rpi-header h2, #lib-header h2 { font-size: 15px; font-weight: 600; color: #e8e8e8; margin-right: auto; }
-    #btn-rpi-close, #btn-lib-close {
+    #rpi-header h2, #lib-header h2, #setup-header h2 { font-size: 15px; font-weight: 600; color: #e8e8e8; margin-right: auto; }
+    #btn-rpi-close, #btn-lib-close, #btn-setup-close {
       background: none; border: none; color: #9d9d9d;
       font-size: 22px; line-height: 1; cursor: pointer; padding: 0 4px;
     }
-    #btn-rpi-close:hover, #btn-lib-close:hover { color: #e8e8e8; }
+    #btn-rpi-close:hover, #btn-lib-close:hover, #btn-setup-close:hover { color: #e8e8e8; }
+
+    #setup-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    #setup-body p { font-size: 13px; line-height: 1.5; color: #c8c8c8; }
+    #setup-log {
+      max-height: 180px;
+      overflow-y: auto;
+      margin: 0;
+      padding: 8px 10px;
+      background: #181818;
+      border: 1px solid #3e3e3e;
+      border-radius: 4px;
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #b6e3b6;
+    }
+    #setup-log.hidden { display: none; }
+    #btn-setup-run {
+      padding: 8px;
+      border: none;
+      border-radius: 4px;
+      background: #0e7ac4;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    #btn-setup-run:hover { background: #1089d4; }
+    #btn-setup-run:disabled { background: #3e3e3e; color: #7d7d7d; cursor: default; }
 
     #rpi-form, #lib-form { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
     #rpi-form label, #lib-form label {
@@ -569,7 +602,7 @@
 </head>
 <body>
   <div id="toolbar">
-    <h1>Arduino Block App</h1>
+    <h1>SketchBlocks</h1>
     <span id="arduino-actions">
       <button id="btn-examples" title="Browse Arduino example sketches">Examples</button>
       <select id="board-select" title="Connected boards"></select>
@@ -579,8 +612,10 @@
       <button id="btn-serial" title="Open the Serial Monitor (Ctrl+M)">⊟ Serial Monitor</button>
     </span>
     <span id="rpi-actions" class="hidden">
+      <button id="btn-rpi-examples" title="Browse Raspberry Pi example programs">Examples</button>
       <button id="btn-rpi-settings">⚙ Pi Settings</button>
       <button id="btn-rpi-run">▶ Run on Pi</button>
+      <button id="btn-rpi-stop" disabled>■ Stop</button>
     </span>
     <button id="btn-undo" title="Undo (Ctrl+Z)">↶</button>
     <button id="btn-redo" title="Redo (Ctrl+Y)">↷</button>
@@ -724,6 +759,22 @@
         <button id="btn-examples-close" title="Close">×</button>
       </div>
       <div id="examples-list"></div>
+    </div>
+  </div>
+
+  <div id="setup-overlay">
+    <div id="setup-panel">
+      <div id="setup-header">
+        <h2>Set Up Arduino Tools</h2>
+        <button id="btn-setup-close" title="Close">×</button>
+      </div>
+      <div id="setup-body">
+        <p>Compiling and uploading sketches needs the free <strong>arduino-cli</strong> tool and the
+        Arduino AVR board support package. SketchBlocks can download these from the official
+        Arduino releases and set them up automatically (about 25&nbsp;MB).</p>
+        <pre id="setup-log" class="hidden"></pre>
+        <button id="btn-setup-run">Download &amp; Install</button>
+      </div>
     </div>
   </div>
 

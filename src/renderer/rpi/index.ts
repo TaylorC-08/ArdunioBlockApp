@@ -1,103 +1,64 @@
 import * as Blockly from 'blockly';
-import { pythonGenerator, Order } from 'blockly/python';
+import { pythonGenerator } from './pythonSetup';
 
-// ---- Raspberry Pi GPIO blocks (RPi.GPIO, BCM numbering) ----
-// Standard blocks (logic/loops/math/text/variables) use Blockly's built-in
-// Python generator unchanged; only the GPIO/time blocks are custom.
-
-Blockly.defineBlocksWithJsonArray([
-  {
-    type: 'rpi_pin_setup',
-    message0: 'setup pin %1 as %2',
-    args0: [
-      { type: 'field_number', name: 'PIN', value: 17, min: 0, max: 27, precision: 1 },
-      { type: 'field_dropdown', name: 'MODE', options: [['output', 'OUT'], ['input', 'IN']] },
-    ],
-    previousStatement: null,
-    nextStatement: null,
-    colour: 200,
-    tooltip: 'Configure a GPIO pin as input or output (BCM numbering)',
-  },
-  {
-    type: 'rpi_digital_write',
-    message0: 'set pin %1 %2',
-    args0: [
-      { type: 'field_number', name: 'PIN', value: 17, min: 0, max: 27, precision: 1 },
-      { type: 'field_dropdown', name: 'VALUE', options: [['HIGH', 'HIGH'], ['LOW', 'LOW']] },
-    ],
-    previousStatement: null,
-    nextStatement: null,
-    colour: 200,
-    tooltip: 'Drive a GPIO output pin high or low',
-  },
-  {
-    type: 'rpi_digital_read',
-    message0: 'read pin %1',
-    args0: [
-      { type: 'field_number', name: 'PIN', value: 17, min: 0, max: 27, precision: 1 },
-    ],
-    output: 'Boolean',
-    colour: 200,
-    tooltip: 'Read the value of a GPIO input pin',
-  },
-  {
-    type: 'rpi_sleep',
-    message0: 'sleep %1 seconds',
-    args0: [
-      { type: 'input_value', name: 'SECONDS', check: 'Number' },
-    ],
-    previousStatement: null,
-    nextStatement: null,
-    colour: 120,
-    tooltip: 'Pause for a number of seconds',
-  },
-]);
-
-// definitions_ is protected at the type level; go through the generator object each
-// time since the dict is replaced on every generator init.
-const pyDefs = pythonGenerator as unknown as { definitions_: Record<string, string> };
-
-// gpio init (import + BCM mode) emitted once via the generator's definitions.
-function ensureGpioInit(): void {
-  pyDefs.definitions_['gpio_init'] =
-    'import RPi.GPIO as GPIO\nGPIO.setmode(GPIO.BCM)';
-}
-
-pythonGenerator.forBlock['rpi_pin_setup'] = function (block) {
-  ensureGpioInit();
-  const pin = block.getFieldValue('PIN');
-  const mode = block.getFieldValue('MODE');
-  return `GPIO.setup(${pin}, GPIO.${mode})\n`;
-};
-
-pythonGenerator.forBlock['rpi_digital_write'] = function (block) {
-  ensureGpioInit();
-  const pin = block.getFieldValue('PIN');
-  const value = block.getFieldValue('VALUE');
-  return `GPIO.output(${pin}, GPIO.${value})\n`;
-};
-
-pythonGenerator.forBlock['rpi_digital_read'] = function (block) {
-  ensureGpioInit();
-  const pin = block.getFieldValue('PIN');
-  return [`GPIO.input(${pin})`, Order.FUNCTION_CALL];
-};
-
-pythonGenerator.forBlock['rpi_sleep'] = function (block, generator) {
-  pyDefs.definitions_['import_time'] = 'import time';
-  const seconds = generator.valueToCode(block, 'SECONDS', Order.NONE) || '1';
-  return `time.sleep(${seconds})\n`;
-};
+// Barrel — importing this module configures the Python generator and registers all
+// Raspberry Pi block definitions as side effects, then exposes the toolbox.
+import './blocks/structure';
+import './blocks/gpio';
+import './blocks/pwm';
+import './blocks/events';
+import './blocks/buses';
+import './blocks/sensors';
 
 export const rpiToolbox: Blockly.utils.toolbox.ToolboxDefinition = {
   kind: 'categoryToolbox',
   contents: [
+    {
+      kind: 'category', name: 'Structure', colour: '#C49A3F',
+      contents: [
+        { kind: 'block', type: 'rpi_setup' },
+        { kind: 'block', type: 'rpi_loop' },
+        { kind: 'block', type: 'rpi_cleanup' },
+      ],
+    },
     {
       kind: 'category', name: 'GPIO', colour: '#A6328C',
       contents: [
         { kind: 'block', type: 'rpi_pin_setup' },
         { kind: 'block', type: 'rpi_digital_write' },
         { kind: 'block', type: 'rpi_digital_read' },
+      ],
+    },
+    {
+      kind: 'category', name: 'PWM & Servo', colour: '#5C68A6',
+      contents: [
+        { kind: 'block', type: 'rpi_pwm_start' },
+        { kind: 'block', type: 'rpi_pwm_duty' },
+        { kind: 'block', type: 'rpi_pwm_stop' },
+        { kind: 'block', type: 'rpi_servo_attach' },
+        { kind: 'block', type: 'rpi_servo_write' },
+      ],
+    },
+    {
+      kind: 'category', name: 'Events', colour: '#B89A2B',
+      contents: [
+        { kind: 'block', type: 'rpi_on_edge' },
+        { kind: 'block', type: 'rpi_wait_edge' },
+      ],
+    },
+    {
+      kind: 'category', name: 'Buses', colour: '#8A5CA6',
+      contents: [
+        { kind: 'block', type: 'rpi_i2c_write' },
+        { kind: 'block', type: 'rpi_i2c_read' },
+        { kind: 'block', type: 'rpi_spi_transfer' },
+      ],
+    },
+    {
+      kind: 'category', name: 'Sensors', colour: '#A6497A',
+      contents: [
+        { kind: 'block', type: 'rpi_hcsr04' },
+        { kind: 'block', type: 'rpi_dht_read' },
       ],
     },
     {
